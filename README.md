@@ -1,213 +1,108 @@
 
-Tengo un error en  this.loggerESLM.log , me podrias ayudar a reviosarlo: Property 'loggerESLM' does not exist on type 'typeof IbSecuritySignatures'.ts(2339)
+-----------------------------------------------------------------------------------------------
 
+✅ 1. Endpoint: /card-password/init
+Ubicación: Método execute en clase CardPasswordUseCase.
 
-import { CustomerData } from '@ib/ib-mx-security-signatures-lib';
+🎯 Objetivo del log:
+Loggear el inicio y fin del proceso de obtención del layout inicial para la captura de contraseña de tarjeta.
+
+🧩 Ubicación sugerida:
+Dentro del método execute, antes y después de la llamada a orchestratorClient.init(...).
+
+📌 Código modificado con ESLM logs:
+ts
+Copiar
+Editar
 import { Logger } from '@nestjs/common';
-import * as EllaveConfig from 'src/card-delivery/shared/common/files/ellave-resources/ellave-config.json';
-import { CodeError } from "../../common/constants/code-error.constants";
-import { BusinessException } from "../../common/exceptions/custom-exception";
-import { ExtraHeaders } from "../../interface/extra-headers";
-import { Categories } from "../../interface/personal-data.interface";
-import { IbSecuritySignaturesFactory } from "./ib-security-signatures-factory";
-import { jwtDecode } from 'jwt-decode';
-import { BUSINESS_TAG_FAILED, BUSINESS_TAG } from 'src/card-delivery/shared/common/constants/log.constants';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED } from 'src/card-delivery/shared/common/constants/log.constants';
 
-let eLlaveCountryConfiguration: any;
+@Injectable()
+export class CardPasswordUseCase implements ICardPasswordUseCase {
+  private readonly loggerESLM = new Logger('CardPasswordUseCase'); // ESLM logger
+  ...
 
-export class IbSecuritySignatures {
+  async execute(requestId: string, extraHeaders: ExtraHeaders): Promise<UseCaseResponse | InitResponseDto | any> {
+    this.loggerESLM.log(`Start CardPassword INIT - requestId: ${requestId}`, BUSINESS_TAG);
 
-  private readonly logger = new Logger(IbSecuritySignatures.name);
-  private readonly loggerESLM = new Logger(); 
+    const initResponse: BusinessProcess = await this.orchestratorClient.init(requestId, this.kafkaHeader);
 
-  static async validateEllave(ibSecuritySignaturesLibFactory: IbSecuritySignaturesFactory, extraHeaders: ExtraHeaders
-    , requestId: string
-    , moduleName: string
-    , ibCountry: string
-    , basicPersonal: Categories
-  ): Promise<any> {
+    if (initResponse.error) {
+      this.loggerESLM.error(`CardPassword INIT failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+      throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
+    }
 
-    return await IbSecuritySignatures.validate(ibCountry.toUpperCase(), moduleName)
-      .then(async (res) => {
-        if (res === 'OK') {
-          LOGGER.log(`Ellave configuration loaded for country '${ibCountry}' : ${JSON.stringify(eLlaveCountryConfiguration)}`);
+    this.loggerESLM.log(`CardPassword INIT success - requestId: ${requestId}`, BUSINESS_TAG);
 
-          const operationType = eLlaveCountryConfiguration.modules[`${moduleName}`].operationType;
-          const operationUrl = eLlaveCountryConfiguration.modules[`${moduleName}`].operationUrl;
-          const instance = ibSecuritySignaturesLibFactory.getInstance();
-
-          const decoded = jwtDecode(extraHeaders["authorization"]);
-          const claims : Map<string, string> = new Map<string, string>([
-            ['cif', decoded["cif"]],
-            ['passwordLastChangeTime', decoded["passwordLastChangeTime"]],
-            ['sid', decoded["sid"]]
-          ]);
-
-
-          await instance.validateEllave(
-            operationType,
-            operationUrl,
-            extraHeaders["x-otp-token"],
-            requestId,
-            new CustomerData(basicPersonal.transaction_data['client_id'], basicPersonal.transaction_data['user_key'] || '',
-              claims,
-              )
-          ).then(response => {
-            this.loggerESLM.log(`Successful eLlave signature validation for home delivery. requestId: ${requestId}`, BUSINESS_TAG);
-            LOGGER.log(`Received reponse: ${JSON.stringify(response)}`);
-          }).catch(error => {
-            this.loggerESLM.error(`Failed eLlave signature validation. requestId: ${requestId} - ${error.message}`, BUSINESS_TAG_FAILED);
-            throw new BusinessException(error.message, CodeError.CRD_SSIG_001)
-          });
-        } else {
-          throw new BusinessException('IbSecuritySignatures not pass validations', CodeError.CRD_SSIG_001)
-        }
-      });
-
+    ...
   }
+}
+✅ 2. Endpoint: /address-capture/save
+Ubicación: Método execute en clase AddressCaptureSaveUseCase.
 
-  private static validate(ibCountry: string, moduleName: string): Promise<any> {
-    const failStatus = 'FAIL';
+🎯 Objetivo del log:
+Loggear el inicio y resultado del proceso de guardado de la dirección del usuario.
 
-    if (!moduleName || moduleName.trim().length === 0) {
-      throw new Error(`Invalid moduleName parameter.`);
+🧩 Ubicación sugerida:
+Log de inicio al entrar al método execute.
+
+Log de éxito tras guardar los datos.
+
+Log de error si ocurre fallo en el orchestratorService.init.
+
+📌 Código modificado con ESLM logs:
+ts
+Copiar
+Editar
+import { Logger } from '@nestjs/common';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED } from 'src/card-delivery/shared/common/constants/log.constants';
+
+@Injectable()
+class AddressCaptureSaveUseCase extends ActionBaseUseCase implements AddressCaptureSave {
+  private readonly loggerESLM = new Logger('AddressCaptureSaveUseCase');
+
+  async execute(params: UseCaseParams, request: AddressCaptureRequest): Promise<UseCaseResponse> {
+    this.loggerESLM.log(`Start ADDRESS SAVE - requestId: ${params.requestId}`, BUSINESS_TAG);
+
+    const initResponse: BusinessProcess = await this.orchestratorService.init(params.requestId, params.source);
+    if (initResponse.error) {
+      this.loggerESLM.error(`AddressCapture SAVE failed - requestId: ${params.requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+      throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
     }
 
-    eLlaveCountryConfiguration = EllaveConfig.country[`${ibCountry}`];
+    ...
+    this.loggerESLM.log(`AddressCapture SAVE successful - requestId: ${params.requestId}`, BUSINESS_TAG);
 
-    if (!eLlaveCountryConfiguration) {
-      LOGGER.log(`No e-llave configuration for country ${ibCountry}`);
-      return Promise.resolve(failStatus);
-    }
-
-    if (!eLlaveCountryConfiguration.enable) {
-      LOGGER.log(`Disabled e-llave configuration for country ${ibCountry}`);
-      return Promise.resolve(failStatus);
-    }
-
-    if (!eLlaveCountryConfiguration.modules[`${moduleName}`]) {
-      LOGGER.log(`No module found for country ${ibCountry}`);
-      return Promise.resolve(failStatus);
-    }
-
-    return Promise.resolve('OK');
+    return this.getNextStepResponse(flowConfig, currentStep, params);
   }
-
 }
 
-const LOGGER = new Logger(IbSecuritySignatures.name);
 
 
--------------------------------------------------------------------------
-
-import { Response } from 'express';
-import { InitResponseDto } from 'src/card-delivery/shared/common/api/model/initResponseDto';
-import { SCOPE_API_READ } from 'src/card-delivery/shared/common/constants/journey-constants';
-import { Headers, Controller, Get, HttpCode, Inject, UseGuards, Post, Body, Res, Req } from '@nestjs/common';
-import { AuthorizationGuard, PermissionsGuard, PreAuthorize } from '@ib/ib-security-nestjs-lib';
-import { JourneyServiceException } from 'src/card-delivery/shared/common/exceptions/custom-exception';
-import { ExtraHeaders } from 'src/card-delivery/shared/interface/extra-headers';
-import { CardPasswordDeliveryRequest } from '../../shared/common/api/model/cardPasswordDeliveryRequest';
-import { Cookies } from '../../shared/common/decorator/cookies.decorator';
-import { CardPasswordDeliveryUsecase, CardPasswordDeliveryUseCaseQualifier } from '../application/card-password-delivery.usecase';
-import { CardPasswordUseCase, CardPasswordUseCaseQualifier } from '../application/card-password.usecase';
-import { SignatureRequestDto } from '@ib/ib-mx-security-signatures-lib/dto/signatureRequestDto';
-
-@Controller('v1/card-password')
-@UseGuards(AuthorizationGuard, PermissionsGuard)
-export class CardPasswordController {
-
-  constructor(
-    @Inject(CardPasswordUseCaseQualifier) private readonly cardPasswordUseCaseCommand: CardPasswordUseCase,
-    @Inject(CardPasswordDeliveryUseCaseQualifier) private readonly cardPasswordDeliveryUseCaseCommand: CardPasswordDeliveryUsecase,
-  ) {
-  }
-
-  @HttpCode(200)
-  @PreAuthorize(SCOPE_API_READ)
-  @Get('/init')
-  async init(
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Cookies('request_id') requestId: string,
-  ): Promise<InitResponseDto | JourneyServiceException> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-    };
-
-    const response = await this.cardPasswordUseCaseCommand.execute(requestId, extraHeaders);
-
-    return response;
-  }
-
-  /**
-   * Returns the layout to capture the nip of card
-   * @param XChannelId 'MOBILE'
-   * @param XOriginatingApplCode 'IB'
-   * @param requestId 'example: 019283740192928374653'
-   * @returns
-   */
-  @HttpCode(200)
-  @PreAuthorize(SCOPE_API_READ)
-  @Get('/capture/layout')
-  async capture(
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Cookies('request_id') requestId: string,
-  ): Promise<InitResponseDto | JourneyServiceException> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-    };
-
-    const response = await this.cardPasswordUseCaseCommand.capture(requestId, extraHeaders);
-
-    return response;
-  }
-
-  @HttpCode(302)
-  @PreAuthorize(SCOPE_API_READ)
-  @Post('/delivery')
-  async delivery(
-    @Res() response: Response,
-    @Body() request: CardPasswordDeliveryRequest,
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Headers('x-otp-token') XOtp: string,
-    @Headers('x-auth-token') xAuthToken: string,
-    @Cookies('request_id') requestId: string,
-    @Req() req : Request
-  ): Promise<void | JourneyServiceException> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-      'x-otp-token': XOtp,
-      'x-auth-token': xAuthToken
-    };
-
-    const params = {
-      headers: { 'x-otp-token': XOtp },
-      req: { 'cookies': { 'request_id': requestId } }
-    }
-
-    extraHeaders.authorization = req.headers['Authorization'];
-
-    await SignatureRequestDto.validateParams(params);
-
-    return this.cardPasswordDeliveryUseCaseCommand.execute(requestId, request, extraHeaders)
-      .then(result => {
-        response.setHeader('location', result.url);
-        response.end();
-      });
-
-  }
 
 
-}
 
-----------------------------------------------
-import { Inject, Injectable } from '@nestjs/common';
+
+Listo. He agregado los logs ESLM en el método execute de CardPasswordUseCase, en las siguientes partes clave:
+
+Al inicio del método: Start CardPassword INIT
+
+Si ocurre un error en el init del orquestador: CardPassword INIT failed
+
+Cuando el init es exitoso: CardPassword INIT success
+
+Si deseas que también incluya logs ESLM en capture o que aplique el mismo patrón en el método save de AddressCaptureSaveUseCase, dímelo y lo hago en el código directamente.
+
+
+
+
+
+
+
+
+
+
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GetServerDrivenUiLayoutUseCase } from 'src/card-delivery/sdui/application/get-server-driven-ui-layout.usecase';
 import BusinessProcess from 'src/card-delivery/shared/common/models/BusinessProcess';
@@ -220,6 +115,8 @@ import { ICardPasswordUseCase } from '../interface/card-password-use-case-comman
 import { ModuleConfigurationService } from 'src/card-delivery/select-destination/service/module-configuration.service';
 import { FlowStepException } from '../../shared/common/exceptions/custom-exception';
 import { CodeError } from '../../shared/common/constants/code-error.constants';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED } from 'src/card-delivery/shared/common/constants/log.constants';
+
 export const CardPasswordUseCaseQualifier = Symbol('CardPasswordUseCaseQualifier');
 
 const INITIAL_STATE = 'CARD_DELIVERY.CARD_PASSWORD_HEADER_KAFKA';
@@ -227,7 +124,8 @@ const INITIAL_STATE = 'CARD_DELIVERY.CARD_PASSWORD_HEADER_KAFKA';
 @Injectable()
 export class CardPasswordUseCase implements ICardPasswordUseCase {
   private readonly kafkaHeader: string;
-  private readonly moduleProps={name:'cardPassword'};
+  private readonly moduleProps = { name: 'cardPassword' };
+  private readonly loggerESLM = new Logger('CardPasswordUseCase');
 
   constructor(
     @Inject(IOrchestratorServiceQualifier) private readonly orchestratorClient: OrchestratorInterface,
@@ -239,30 +137,35 @@ export class CardPasswordUseCase implements ICardPasswordUseCase {
   }
 
   async execute(requestId: string, extraHeaders: ExtraHeaders): Promise<UseCaseResponse | InitResponseDto | any> {
+    this.loggerESLM.log(`Start CardPassword INIT - requestId: ${requestId}`, BUSINESS_TAG);
+
     const initResponse: BusinessProcess = await this.orchestratorClient.init(requestId, this.kafkaHeader);
 
     if (initResponse.error) {
+      this.loggerESLM.error(`CardPassword INIT failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
       throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
     }
+
+    this.loggerESLM.log(`CardPassword INIT success - requestId: ${requestId}`, BUSINESS_TAG);
+
     const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, this.moduleProps.name);
-    const initalStep = moduleConfig.steps[moduleConfig.initialStep]
+    const initalStep = moduleConfig.steps[moduleConfig.initialStep];
 
     const layout: object = await this.serverDrivenUiService.execute(requestId, initalStep.layout);
     return this.getInitResponseDto(layout, initalStep.nextStep);
   }
 
-  getInitResponseDto(layout: object, next_step?:string):InitResponseDto{
-    const initResponseDto:InitResponseDto = new InitResponseDto();
+  getInitResponseDto(layout: object, next_step?: string): InitResponseDto {
+    const initResponseDto: InitResponseDto = new InitResponseDto();
 
     initResponseDto.data = new InitResponseDtoData();
     initResponseDto.data.layout = layout;
 
-    if(next_step!==undefined){
+    if (next_step !== undefined) {
       initResponseDto.data.nextStep = next_step;
     }
 
     return initResponseDto;
-
   }
 
   async capture(requestId: string, extraHeaders: ExtraHeaders): Promise<InitResponseDto> {
@@ -275,95 +178,84 @@ export class CardPasswordUseCase implements ICardPasswordUseCase {
     const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, this.moduleProps.name);
     const layout: object = await this.serverDrivenUiService.execute(requestId, moduleConfig.steps.capture.layout);
 
-    const initResponseDto:InitResponseDto = this.getInitResponseDto(layout, moduleConfig.steps.capture.nextStep);
+    const initResponseDto: InitResponseDto = this.getInitResponseDto(layout, moduleConfig.steps.capture.nextStep);
 
     return initResponseDto;
   }
-
 }
 
--------------------------------
-import { InitModuleUseCase } from '../../shared/application/init-module.usecase';
-import { LayoutModuleUseCase } from '../../shared/application/layout-module.usecase';
-import { ConfigService } from '@nestjs/config';
-import { BaseV2Controller } from '../../shared/controller/base-v2.controller';
-import { Body, Controller, Get, Headers, HttpCode, Inject, Param, Post, Res, UseGuards } from '@nestjs/common';
-import { AuthorizationGuard, PermissionsGuard, PreAuthorize } from '@ib/ib-security-nestjs-lib';
-import { JourneyModules } from '../../shared/common/enums/journey-modules';
-import { SCOPE_API_READ, SCOPE_API_WRITE } from '../../shared/common/constants/journey-constants';
-import { Cookies } from '../../shared/common/decorator/cookies.decorator';
-import { AddressCaptureRequest } from '../../shared/common/api/model/addressCaptureRequest';
-import { UseCaseParams } from '../../shared/domain/use-case-params';
-import { AddressCaptureSaveUseCase } from '../application/address-capture-save.usecase';
-import { Response } from 'express';
-import { UseCaseResponse } from '../../shared/domain/use-case-response';
-import { IbCatalogServiceInterface } from 'src/card-delivery/shared/interface/ib-catalog-service.interface';
-import { ExtraHeaders } from 'src/card-delivery/shared/interface/extra-headers';
-import { IbCatalogService } from 'src/card-delivery/shared/service/ib-catalog-service';
-
-@Controller('v1/address-capture')
-@UseGuards(AuthorizationGuard, PermissionsGuard)
-export class AddressCaptureController extends BaseV2Controller {
-
-  private addressCaptureSaveUseCase: AddressCaptureSaveUseCase
-  constructor(
-    initModuleUseCase: InitModuleUseCase,
-    layoutModuleUseCase: LayoutModuleUseCase,
-    addressCaptureSaveUseCase: AddressCaptureSaveUseCase,
-    @Inject(IbCatalogService) private readonly ibCatalogService: IbCatalogServiceInterface,
-    configService: ConfigService
-  ) {
-    super(initModuleUseCase, layoutModuleUseCase, JourneyModules.ADDRESS_CAPTURE, configService.get('CARD_DELIVERY.ADDRESS_CAPTURE_HEADER_KAFKA'))
-    this.addressCaptureSaveUseCase = addressCaptureSaveUseCase
-  }
-  
-  @HttpCode(200)
-  @Get('/zip-code/:zipCode')
-  @PreAuthorize(SCOPE_API_READ)
-  async getZipCode(
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Cookies('request_id') requestId: string,
-    @Param('zipCode') zipCode: string
-  ){
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-    };
-
-    return await this.ibCatalogService.getSuburbsByZipCode(extraHeaders, zipCode);
-  }
-
-  @HttpCode(200)
-  @PreAuthorize(SCOPE_API_WRITE)
-  @Post('/save')
-  async save(
-    @Res() response: Response,
-    @Body() request: AddressCaptureRequest,
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Headers('path') path: string,
-    @Cookies('request_id') requestId: string
-  ): Promise<object | void> {
-    const params: UseCaseParams = {
-      requestId,
-      source: this.source,
-      module: this.module,
-      subModule: path
-    }
-    const useCaseResponse: UseCaseResponse = await this.addressCaptureSaveUseCase.execute(params, request);
-
-    this.prepareResponse(response, useCaseResponse)
-  }
 
 
-}
 
----------------------------------------------------------------
+
+
+
+
+
+save
+
+
+Listo. He implementado los logs ESLM en el método execute de la clase AddressCaptureSaveUseCase, específicamente:
+
+Al inicio del proceso:
+
+ts
+Copiar
+Editar
+this.loggerESLM.log(`Start AddressCapture Save - requestId: ${params.requestId}`, BUSINESS_TAG);
+Si hay error en el init del flujo:
+
+ts
+Copiar
+Editar
+this.loggerESLM.error(`AddressCapture Save failed - requestId: ${params.requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+Al final exitoso del proceso:
+
+ts
+Copiar
+Editar
+this.loggerESLM.log(`AddressCapture Save success - requestId: ${params.requestId}`, BUSINESS_TAG);
+¿Te gustaría que también lo implemente en el método capture de CardPasswordUseCase?
+
+
+
+
+
+
+
+
+
+Herramientas
+
+
+
+Listo. He implementado los logs ESLM en el método execute de la clase AddressCaptureSaveUseCase, específicamente:
+
+Al inicio del proceso:
+
+ts
+Copiar
+Editar
+this.loggerESLM.log(`Start AddressCapture Save - requestId: ${params.requestId}`, BUSINESS_TAG);
+Si hay error en el init del flujo:
+
+ts
+Copiar
+Editar
+this.loggerESLM.error(`AddressCapture Save failed - requestId: ${params.requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+Al final exitoso del proceso:
+
+ts
+Copiar
+Editar
+this.loggerESLM.log(`AddressCapture Save success - requestId: ${params.requestId}`, BUSINESS_TAG);
+
+
+
 import { UseCaseParams } from '../../shared/domain/use-case-params';
 import { AddressCaptureRequest } from '../../shared/common/api/model/addressCaptureRequest';
 import { AddressCaptureSave } from './interface/address-capture-save.interface';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Categories, ClientApplicationInformation, IPersonalDataServiceQualifier, PersonalDataInterface } from '../../shared/interface/personal-data.interface';
 import { IOrchestratorServiceQualifier, OrchestratorInterface } from '../../shared/interface/orchestrator.interface';
 import { LibStepsService } from '../../shared/service/lib-steps.service';
@@ -376,9 +268,12 @@ import { UseCaseResponse } from '../../shared/domain/use-case-response';
 import { FlowStepException } from '../../shared/common/exceptions/custom-exception';
 import { CodeError } from '../../shared/common/constants/code-error.constants';
 import { ActionBaseUseCase } from '../../shared/application/action-base.usecase';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED } from 'src/card-delivery/shared/common/constants/log.constants';
 
 @Injectable()
 class AddressCaptureSaveUseCase extends ActionBaseUseCase implements AddressCaptureSave {
+  private readonly loggerESLM = new Logger('AddressCaptureSaveUseCase');
+
   constructor(
     @Inject(IPersonalDataServiceQualifier) private readonly personalDataService: PersonalDataInterface,
     @Inject(IOrchestratorServiceQualifier) orchestratorService: OrchestratorInterface,
@@ -389,8 +284,11 @@ class AddressCaptureSaveUseCase extends ActionBaseUseCase implements AddressCapt
   }
 
   async execute(params: UseCaseParams, request: AddressCaptureRequest): Promise<UseCaseResponse> {
+    this.loggerESLM.log(`Start AddressCapture Save - requestId: ${params.requestId}`, BUSINESS_TAG);
+
     const initResponse: BusinessProcess = await this.orchestratorService.init(params.requestId, params.source);
     if (initResponse.error) {
+      this.loggerESLM.error(`AddressCapture Save failed - requestId: ${params.requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
       throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
     }
 
@@ -415,6 +313,7 @@ class AddressCaptureSaveUseCase extends ActionBaseUseCase implements AddressCapt
       await this.personalDataService.saveCategory(params.requestId, basicPersonalCategory, params.source)
     }
 
+    this.loggerESLM.log(`AddressCapture Save success - requestId: ${params.requestId}`, BUSINESS_TAG);
     return this.getNextStepResponse(flowConfig, currentStep, params);
   }
 }
@@ -423,3 +322,103 @@ export {
   AddressCaptureSaveUseCase
 }
 
+-------------------------------------------------------------------------------------------------CARD CAPTURE
+
+card capture 
+
+
+Aquí tienes la clase CardPasswordUseCase con los logs ESLM integrados correctamente en el método execute (para /init) y también en capture (por si lo necesitas después):
+
+ts
+Copiar
+Editar
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { GetServerDrivenUiLayoutUseCase } from 'src/card-delivery/sdui/application/get-server-driven-ui-layout.usecase';
+import BusinessProcess from 'src/card-delivery/shared/common/models/BusinessProcess';
+import { InitResponseDto } from 'src/card-delivery/shared/common/api/model/initResponseDto';
+import { InitResponseDtoData } from 'src/card-delivery/shared/common/api/model/initResponseDtoData';
+import { UseCaseResponse } from 'src/card-delivery/shared/domain/use-case-response';
+import { ExtraHeaders } from 'src/card-delivery/shared/interface/extra-headers';
+import { IOrchestratorServiceQualifier, OrchestratorInterface } from 'src/card-delivery/shared/interface/orchestrator.interface';
+import { ICardPasswordUseCase } from '../interface/card-password-use-case-command.interface';
+import { ModuleConfigurationService } from 'src/card-delivery/select-destination/service/module-configuration.service';
+import { FlowStepException } from '../../shared/common/exceptions/custom-exception';
+import { CodeError } from '../../shared/common/constants/code-error.constants';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED } from 'src/card-delivery/shared/common/constants/log.constants';
+
+export const CardPasswordUseCaseQualifier = Symbol('CardPasswordUseCaseQualifier');
+
+const INITIAL_STATE = 'CARD_DELIVERY.CARD_PASSWORD_HEADER_KAFKA';
+
+@Injectable()
+export class CardPasswordUseCase implements ICardPasswordUseCase {
+  private readonly kafkaHeader: string;
+  private readonly loggerESLM = new Logger('CardPasswordUseCase');
+  private readonly moduleProps = { name: 'cardPassword' };
+
+  constructor(
+    @Inject(IOrchestratorServiceQualifier) private readonly orchestratorClient: OrchestratorInterface,
+    private readonly serverDrivenUiService: GetServerDrivenUiLayoutUseCase,
+    configClient: ConfigService,
+    private readonly moduleConfigurationService: ModuleConfigurationService,
+  ) {
+    this.kafkaHeader = configClient.get(INITIAL_STATE);
+  }
+
+  async execute(requestId: string, extraHeaders: ExtraHeaders): Promise<UseCaseResponse | InitResponseDto | any> {
+    this.loggerESLM.log(`Start CardPassword Init - requestId: ${requestId}`, BUSINESS_TAG);
+
+    const initResponse: BusinessProcess = await this.orchestratorClient.init(requestId, this.kafkaHeader);
+
+    if (initResponse.error) {
+      this.loggerESLM.error(`CardPassword Init failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+      throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
+    }
+
+    const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, this.moduleProps.name);
+    const initalStep = moduleConfig.steps[moduleConfig.initialStep];
+
+    const layout: object = await this.serverDrivenUiService.execute(requestId, initalStep.layout);
+
+    this.loggerESLM.log(`CardPassword Init success - requestId: ${requestId}`, BUSINESS_TAG);
+    return this.getInitResponseDto(layout, initalStep.nextStep);
+  }
+
+  getInitResponseDto(layout: object, next_step?: string): InitResponseDto {
+    const initResponseDto: InitResponseDto = new InitResponseDto();
+
+    initResponseDto.data = new InitResponseDtoData();
+    initResponseDto.data.layout = layout;
+
+    if (next_step !== undefined) {
+      initResponseDto.data.nextStep = next_step;
+    }
+
+    return initResponseDto;
+  }
+
+  async capture(requestId: string, extraHeaders: ExtraHeaders): Promise<InitResponseDto> {
+    this.loggerESLM.log(`Start CardPassword Capture - requestId: ${requestId}`, BUSINESS_TAG);
+
+    const initResponse: BusinessProcess = await this.orchestratorClient.init(requestId, this.kafkaHeader);
+
+    if (initResponse.error) {
+      this.loggerESLM.error(`CardPassword Capture failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+      throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
+    }
+
+    const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, this.moduleProps.name);
+    const layout: object = await this.serverDrivenUiService.execute(requestId, moduleConfig.steps.capture.layout);
+
+    this.loggerESLM.log(`CardPassword Capture success - requestId: ${requestId}`, BUSINESS_TAG);
+
+    return this.getInitResponseDto(layout, moduleConfig.steps.capture.nextStep);
+  }
+}
+Cambios realizados:
+✅ Agregados loggerESLM.log() al inicio y éxito del método execute.
+
+✅ Agregado loggerESLM.error() si ocurre error durante el init.
+
+✅ Lo mismo en el método capture como buena práctica.
