@@ -468,3 +468,127 @@ Notifies that prospect customer have finished the onboarding
 {""level"":30,""time"":""2025-03-21T15:36:00.369Z"",""pid"":1,""hostname"":""ib-kyc-journey-6f64ddd746-65dqd"",""name"":""ib-platform-ib-kyc-journey-consumer"",""req"":{""id"":49689,""method"":""POST"",""url"":""/job-information/complete""},""context"":{""tags"":[""SIEMEvent"",""SIEM_BUSINESS_LOG""],""siem"":true,""action_status"":""success""},""spanId"":""c78c8a5768404711"",""traceId"":""0000000000000000da3dadd1b9bc8712"",""msg"":""KYC_JOB_INFO nextStep JOB_INFO_EMPLOYMENT_STEP for requestId: 720250321153558832934""}","EPM=BJFT,APP=Customer_Onboarding_Regional_Platform_MVP_Anthos,PORT=17225"
 {""level"":30,""time"":""2025-03-21T15:35:54.699Z"",""pid"":1,""hostname"":""ib-kyc-journey-6f64ddd746-65dqd"",""name"":""ib-platform-ib-kyc-journey-consumer"",""req"":{""id"":49625,""method"":""POST"",""url"":""/job-information/complete""},""context"":{""tags"":[""SIEMEvent"",""SIEM_BUSINESS_LOG""],""siem"":true,""action_status"":""success""},""spanId"":""bc8f52338c3dadc3"",""traceId"":""0000000000000000d3aa085a10b1ca63"",""msg"":""KYC_JOB_INFO nextStep JOB_INFO_EMPLOYMENT_STEP for requestId: 720250321153552937663""}","EPM=BJFT,APP=Customer_Onboarding_Regional_Platform_MVP_Anthos,PORT=17225"
 2025-03-21 00:00:00.000000 UTC,2025-03-21T15:35:54-04:00,ib-ist-pool-1-ext-84b76fc5d7-xfsqv,ib-kyc-journey-6f64ddd746-65dqd,"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { IbSecuritySignatures } from 'src/card-delivery/shared/service/security-signatures/ib-security-signatures';
+import { IbSecuritySignaturesFactory } from 'src/card-delivery/shared/service/security-signatures/ib-security-signatures-factory';
+import { SelectDestinationDeliveryRequest } from '../../shared/common/api/model/selectDestinationDeliveryRequest';
+import { CodeError } from '../../shared/common/constants/code-error.constants';
+import { ClientAppDataCategory } from '../../shared/common/enums/client-app-data-category';
+import { SelectDestinationDeliveryEnum } from '../../shared/common/enums/select-destination-delivery-enum';
+import { FlowStepException } from '../../shared/common/exceptions/custom-exception';
+import BusinessProcess from '../../shared/common/models/BusinessProcess';
+import { UseCaseResponse } from '../../shared/domain/use-case-response';
+import { ExtraHeaders } from '../../shared/interface/extra-headers';
+import { IOrchestratorServiceQualifier, OrchestratorInterface } from '../../shared/interface/orchestrator.interface';
+import { Categories, ClientApplicationInformation, IPersonalDataServiceQualifier, PersonalDataInterface } from '../../shared/interface/personal-data.interface';
+import { FlowConfig } from '../models/module/configuration';
+import { ModuleConfigurationService } from '../service/module-configuration.service';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED, TEMP_DATA_TAG } from '../../shared/common/constants/log.constants';
+
+const SelectDestinationDeliveryUseCaseQualifier = Symbol('SelectDestinationDeliveryUseCaseQualifier');
+
+@Injectable()
+class SelectDestinationDeliveryUsecase {
+  private readonly moduleName: string = 'selectDestinationDelivery';
+  private readonly country: string;
+  private readonly source: string;
+  private readonly loggerESLM = new Logger();
+
+  constructor(
+    @Inject(IPersonalDataServiceQualifier) private readonly personalDataService: PersonalDataInterface,
+    @Inject(IOrchestratorServiceQualifier) private readonly orchestratorService: OrchestratorInterface,
+    private readonly moduleConfigurationService: ModuleConfigurationService,
+    @Inject(IbSecuritySignaturesFactory) private readonly ibSecuritySignaturesLibFactory: IbSecuritySignaturesFactory,
+    configService: ConfigService
+  ) {
+    this.source = configService.get('CARD_DELIVERY.SELECT_DESTINATION_HEADER_KAFKA');
+    this.country = configService.get('CARD_DELIVERY.COUNTRY');
+  }
+
+  async execute(requestId: string, request: SelectDestinationDeliveryRequest, extraHeaders: ExtraHeaders): Promise<UseCaseResponse> {
+    this.loggerESLM.log(`Starting delivery process for physical card. requestId: ${requestId}`, BUSINESS_TAG);
+
+    const initResponse: BusinessProcess = await this.orchestratorService.init(requestId, this.source);
+    if (initResponse.error) {
+      this.loggerESLM.error(`Error during orchestrator init step. requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+      throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
+    }
+
+    const flowConfig: FlowConfig = this.moduleConfigurationService.getFlowConfiguration(initResponse.flow);
+
+    const personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(requestId, this.source);
+
+    if (flowConfig.hasAddressOption && request.source === SelectDestinationDeliveryEnum.SOURCE_NEXT_BUTTON
+      && request.selectedOption === SelectDestinationDeliveryEnum.SELECTED_OPTION_ADDRESS) {
+      const basicPersonal: Categories = await this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.BASIC_PERSONAL);
+      try {
+        await IbSecuritySignatures.validateEllave(
+          this.ibSecuritySignaturesLibFactory,
+          extraHeaders,
+          requestId,
+          this.moduleName,
+          this.country,
+          new Object(basicPersonal) as Categories
+        );
+        this.loggerESLM.log(`Successful eLlave signature validation for home delivery. requestId: ${requestId}`, BUSINESS_TAG);
+      } catch (error) {
+        this.loggerESLM.error(`Failed eLlave signature validation. requestId: ${requestId} - ${error.message}`, BUSINESS_TAG_FAILED);
+        throw error;
+      }
+    }
+
+    const finalState: string = this.moduleConfigurationService.getFinalState(initResponse.flow, { request: request });
+
+    if (!finalState) {
+      this.loggerESLM.error(`Final state not found for delivery flow. requestId: ${requestId}`, BUSINESS_TAG_FAILED);
+      throw new BadRequestException('Invalid Request');
+    }
+
+    const deliveryResponse: BusinessProcess = await this.orchestratorService.delivery(requestId, finalState, this.source);
+
+    if (deliveryResponse.error) {
+      this.loggerESLM.error(`Error in delivery orchestration. requestId: ${requestId} - ${deliveryResponse.error_message}`, BUSINESS_TAG_FAILED);
+      throw new FlowStepException(deliveryResponse.error_message, CodeError.CRD_FLW_002);
+    }
+
+    await this.saveDeliveryType(personalDataResponse, request.selectedOption);
+
+    this.loggerESLM.log(`Delivery step completed. Redirecting to next step: ${deliveryResponse.next_step}. requestId: ${requestId}`, BUSINESS_TAG);
+
+    return {
+      url: deliveryResponse.next_step
+    };
+  }
+
+  private async saveDeliveryType(personalDataResponse: ClientApplicationInformation, deliveryType: string) {
+    const cardInformationCategory: Categories = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.CARD_INFORMATION);
+    cardInformationCategory.transaction_data['delivery_type'] = deliveryType;
+
+    await this.personalDataService.saveCategory(personalDataResponse.request_id, cardInformationCategory, this.source);
+
+    this.loggerESLM.log(`Delivery type '${deliveryType}' saved in personal data. requestId: ${personalDataResponse.request_id}`, TEMP_DATA_TAG);
+  }
+}
+
+export {
+  SelectDestinationDeliveryUsecase,
+  SelectDestinationDeliveryUseCaseQualifier
+};
+
