@@ -1,93 +1,3 @@
-De lo que me has ayudado te he compartido las clases para @Post('/delivery') y te he compartido el execute   return await this.selectDestinationDeliveryUseCaseCommand.execute(requestId, request, extraHeaders) el cual se encuentra en la clase selectDestinationDeliveryUseCaseCommand
-requiere que me ayudes a lo mismo con @Get('/init') el cual el .execute se encuentra en esta clase selectDestinationInitUseCaseCommand te comparto la clase, me puedes ayudar con un analisis de este proceso, asi como los Logs ELSM en cada evento por favor
-
-
-import { Body, Controller, Get, Headers, HttpCode, Inject, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { AuthorizationGuard, PermissionsGuard, PreAuthorize } from '@ib/ib-security-nestjs-lib';
-import { SelectDestinationInitUsecase, SelectDestinationInitUseCaseQualifier } from '../application/select-destination-init.usecase';
-import { Cookies } from '../../shared/common/decorator/cookies.decorator';
-import { ExtraHeaders } from '../../shared/interface/extra-headers';
-import { Response } from 'express';
-import { SelectDestinationInitResponse } from '../../shared/common/api/model/selectDestinationInitResponse';
-import { SelectDestinationDeliveryUsecase, SelectDestinationDeliveryUseCaseQualifier } from '../application/select-destination-delivery.usecase';
-import { SelectDestinationDeliveryRequest } from '../../shared/common/api/model/selectDestinationDeliveryRequest';
-import { SCOPE_API_READ } from 'src/card-delivery/shared/common/constants/journey-constants';
-import { SignatureRequestDto } from '@ib/ib-mx-security-signatures-lib/dto/signatureRequestDto';
-import { SelectDestinationDeliveryEnum } from '../../shared/common/enums/select-destination-delivery-enum';
-
-@Controller('v1/select-destination')
-@UseGuards(AuthorizationGuard, PermissionsGuard)
-class SelectDestinationController {
-
-  constructor(
-    @Inject(SelectDestinationInitUseCaseQualifier) private readonly selectDestinationInitUseCaseCommand: SelectDestinationInitUsecase,
-    @Inject(SelectDestinationDeliveryUseCaseQualifier) private readonly selectDestinationDeliveryUseCaseCommand: SelectDestinationDeliveryUsecase
-  ) {
-  }
-
-  @HttpCode(200)
-  @Get('/init')
-  @PreAuthorize(SCOPE_API_READ)
-  async init(
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Headers('latitude') latitude: string,
-    @Headers('longitude') longitude: string,
-    @Cookies('request_id') requestId: string
-  ): Promise<SelectDestinationInitResponse> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-      'latitude': latitude,
-      'longitude': longitude,
-    };
-    return await this.selectDestinationInitUseCaseCommand.execute(requestId, extraHeaders)
-  }
-
-  @PreAuthorize(SCOPE_API_READ)
-  @Post('/delivery')
-  async delivery(
-    @Res() response: Response,
-    @Body() request: SelectDestinationDeliveryRequest,
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Headers('x-otp-token') XOtp: string,
-    @Cookies('request_id') requestId: string,
-    @Req() req : Request
-  ): Promise<void> {
-    let extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-      'x-otp-token': XOtp,
-    };
-    if(request.source === SelectDestinationDeliveryEnum.SOURCE_NEXT_BUTTON
-      && request.selectedOption === SelectDestinationDeliveryEnum.SELECTED_OPTION_ADDRESS){
-      const params =  {
-        headers: {'x-otp-token':XOtp},
-        req: {'cookies': {'request_id': requestId}}
-      }
-  
-      await SignatureRequestDto.validateParams(params);
-    }
-
-    extraHeaders.authorization = req.headers['Authorization'];
-
-
-    return await this.selectDestinationDeliveryUseCaseCommand.execute(requestId, request, extraHeaders)
-      .then(result => {
-        response.status(302).setHeader('location', result.url);
-        response.end();
-      })
-  }
-
-}
-
-export { SelectDestinationController };
-
-
-
-
-
 import { ExtraHeaders } from '../../shared/interface/extra-headers';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Categories, ClientApplicationInformation, IPersonalDataServiceQualifier, PersonalDataInterface } from '../../shared/interface/personal-data.interface';
@@ -110,14 +20,13 @@ import { BranchDto } from 'src/card-delivery/shared/common/api/ib/catalog-servic
 import { BranchAddressDto } from 'src/card-delivery/shared/common/models/BranchAddressDto';
 import { FlowStepException } from '../../shared/common/exceptions/custom-exception';
 import { CodeError } from '../../shared/common/constants/code-error.constants';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED, TEMP_DATA_TAG } from '../../shared/common/constants/log.constants';
 
 const SelectDestinationInitUseCaseQualifier = Symbol('SelectDestinationInitUseCaseQualifier');
 
 @Injectable()
 class SelectDestinationInitUsecase {
-
   private readonly logger = new Logger(SelectDestinationInitUsecase.name);
-
   private readonly source: string;
 
   constructor(
@@ -133,16 +42,21 @@ class SelectDestinationInitUsecase {
   }
 
   async execute(requestId: string, extraHeaders: ExtraHeaders): Promise<SelectDestinationInitResponse> {
+    this.logger.log(`Starting Select Destination Init. requestId: ${requestId}`, BUSINESS_TAG);
     await this.validateHeaders(extraHeaders);
+    this.logger.log(`Headers validated. requestId: ${requestId}`, BUSINESS_TAG);
 
     const initResponse: BusinessProcess = await this.orchestratorService.init(requestId, this.source);
     if (initResponse.error) {
+      this.logger.error(`Orchestration init failed. requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
       throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
     }
+    this.logger.log(`Orchestration init succeeded. Flow: ${initResponse.flow}. requestId: ${requestId}`, BUSINESS_TAG);
 
     const flowConfig: FlowConfig = this.moduleConfigurationService.getFlowConfiguration(initResponse.flow);
 
     let personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(requestId, this.source);
+    this.logger.log(`Fetched personal data. requestId: ${requestId}`, TEMP_DATA_TAG);
 
     const layoutParams: object = {
       address: {},
@@ -155,58 +69,61 @@ class SelectDestinationInitUsecase {
       personalDataResponse: personalDataResponse,
       flow: initResponse.flow,
       source: this.source
-    })
+    });
+    this.logger.log(`Executed step: ${flowConfig.stepName}. requestId: ${requestId}`, BUSINESS_TAG);
 
-    await this.saveInitialDeliveryType(personalDataResponse, flowConfig)
+    await this.saveInitialDeliveryType(personalDataResponse, flowConfig);
 
     if (flowConfig.hasAddressOption) {
-      const residenceAddressCategory: Categories = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.RESIDENCE_ADDRESS)
-      layoutParams['address'] = residenceAddressCategory.transaction_data
+      const residenceAddressCategory: Categories = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.RESIDENCE_ADDRESS);
+      layoutParams['address'] = residenceAddressCategory.transaction_data;
+      this.logger.log(`Added address layout. requestId: ${requestId}`, TEMP_DATA_TAG);
     }
 
     if (flowConfig.hasBranchOption) {
-      const regulatoryCategory: Categories = await this.createOrGetRegulatoryCategory(personalDataResponse, extraHeaders)
-      layoutParams['branch'] = regulatoryCategory.transaction_data
+      const regulatoryCategory: Categories = await this.createOrGetRegulatoryCategory(personalDataResponse, extraHeaders);
+      layoutParams['branch'] = regulatoryCategory.transaction_data;
       await this.saveCustomerGeolocData(requestId, extraHeaders, personalDataResponse);
+      this.logger.log(`Added branch layout and geo data. requestId: ${requestId}`, TEMP_DATA_TAG);
     }
 
-    layoutParams['cardInformation'] = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.CARD_INFORMATION)?.transaction_data
+    layoutParams['cardInformation'] = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.CARD_INFORMATION)?.transaction_data;
 
-    const layout: object = await this.serverDrivenUiUseCase.executeWithParams(requestId, 'select-destination/layout.json', layoutParams)
+    const layout: object = await this.serverDrivenUiUseCase.executeWithParams(requestId, 'select-destination/layout.json', layoutParams);
+    this.logger.log(`Layout generated successfully. requestId: ${requestId}`, BUSINESS_TAG);
 
     return {
       data: {
         layout: layout
       }
-    }
+    };
   }
 
   private async saveInitialDeliveryType(personalDataResponse: ClientApplicationInformation, flowConfig: FlowConfig) {
-
-    const cardInformationCategory = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.CARD_INFORMATION)
+    const cardInformationCategory = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.CARD_INFORMATION);
 
     if (!cardInformationCategory.transaction_data['delivery_type']) {
-      cardInformationCategory.transaction_data['delivery_type'] = flowConfig.initialDeliveryType
+      cardInformationCategory.transaction_data['delivery_type'] = flowConfig.initialDeliveryType;
+      await this.personalDataService.saveCategory(personalDataResponse.request_id, cardInformationCategory, this.source);
+      this.logger.log(`Initial delivery type '${flowConfig.initialDeliveryType}' saved. requestId: ${personalDataResponse.request_id}`, TEMP_DATA_TAG);
     }
-    await this.personalDataService.saveCategory(personalDataResponse.request_id, cardInformationCategory, this.source)
   }
 
   private async createOrGetRegulatoryCategory(personalDataResponse: ClientApplicationInformation, extraHeaders: ExtraHeaders) {
-    let regulatoryCategory: Categories = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.REGULATORY)
+    let regulatoryCategory: Categories = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.REGULATORY);
     if (!regulatoryCategory) {
       regulatoryCategory = await this.createRegulatoryCategory(personalDataResponse.request_id, extraHeaders);
     }
-    return regulatoryCategory
+    return regulatoryCategory;
   }
 
   private async createRegulatoryCategory(requestId: string, extraHeaders: ExtraHeaders) {
-    // Go to Bsc Service to get nearest branch
-    let ibCatalogServiceResponse:RetrieveBranchListResponseDto = null;
-    let nearestBranch:BranchDto = null;
-    try{
+    let ibCatalogServiceResponse: RetrieveBranchListResponseDto = null;
+    let nearestBranch: BranchDto = null;
+    try {
       ibCatalogServiceResponse = await this.ibCatalogService.getNearestBranch(extraHeaders);
       nearestBranch = BranchAddressDto.validateBranch(ibCatalogServiceResponse.data);
-    }catch(err){
+    } catch (err) {
       nearestBranch = BranchAddressDto.validateBranch(null);
     }
 
@@ -217,37 +134,35 @@ class SelectDestinationInitUsecase {
         branch_name: nearestBranch.branchName,
         branch_address: BranchAddressDto.getBranchAddress(nearestBranch.address)
       }
-    }
+    };
 
-    await this.personalDataService.saveCategory(requestId, residenceAddressCategory, this.source)
+    await this.personalDataService.saveCategory(requestId, residenceAddressCategory, this.source);
+    this.logger.log(`Regulatory category saved. requestId: ${requestId}`, TEMP_DATA_TAG);
 
-    return residenceAddressCategory
+    return residenceAddressCategory;
   }
 
-  private async validateHeaders(extraHeaders: ExtraHeaders){
+  private async validateHeaders(extraHeaders: ExtraHeaders) {
     let branchRequest = new BranchRequest();
-
     branchRequest.latitude = extraHeaders.latitude;
     branchRequest.longitude = extraHeaders.longitude;
 
     await validate(branchRequest).then((errors) => {
       if (errors.length > 0) {
-        this.logger.log(`Error validating headers: ${errors}`);
+        this.logger.error(`Error validating headers: ${errors}`, BUSINESS_TAG_FAILED);
         throw new Error(`${errors}`);
       }
     });
   }
 
-  private async saveCustomerGeolocData(requestId: string, extraHeaders: ExtraHeaders, personalDataResponse: ClientApplicationInformation){
-    this.logger.log('Start saveCustomerGeolocData');
-
+  private async saveCustomerGeolocData(requestId: string, extraHeaders: ExtraHeaders, personalDataResponse: ClientApplicationInformation) {
+    this.logger.log('Start saveCustomerGeolocData', TEMP_DATA_TAG);
     await this.createBasicPersonalCategory(requestId, personalDataResponse, extraHeaders);
-
-    this.logger.log('End saveCustomerGeolocData');
+    this.logger.log('End saveCustomerGeolocData', TEMP_DATA_TAG);
   }
 
   private async createBasicPersonalCategory(requestId: string, personalDataResponse: ClientApplicationInformation, extraHeaders: ExtraHeaders) {
-    this.logger.log('Get basic personal category start');
+    this.logger.log('Start createBasicPersonalCategory', TEMP_DATA_TAG);
 
     let basicPersonalCategory: Categories = this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.BASIC_PERSONAL);
 
@@ -258,22 +173,18 @@ class SelectDestinationInitUsecase {
           location_latitude: extraHeaders.latitude,
           location_longitude: extraHeaders.longitude
         }
-      }
-    }else{
+      };
+    } else {
       basicPersonalCategory.transaction_data['location_latitude'] = extraHeaders.latitude;
       basicPersonalCategory.transaction_data['location_longitude'] = extraHeaders.longitude;
     }
 
     await this.personalDataService.saveCategory(requestId, basicPersonalCategory, this.source);
-
-    this.logger.log('Get basic personal category end');
+    this.logger.log('End createBasicPersonalCategory', TEMP_DATA_TAG);
   }
-
 }
 
 export {
   SelectDestinationInitUsecase,
   SelectDestinationInitUseCaseQualifier
 };
-
-
