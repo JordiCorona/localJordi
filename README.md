@@ -1,46 +1,4 @@
-Gracias, me podrias ayudar con el end point /delivery, te comparto la clase controller 
-
- @HttpCode(302)
-  @PreAuthorize(SCOPE_API_READ)
-  @Post('/delivery')
-  async delivery(
-    @Res() response: Response,
-    @Body() request: CardPasswordDeliveryRequest,
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Headers('x-otp-token') XOtp: string,
-    @Headers('x-auth-token') xAuthToken: string,
-    @Cookies('request_id') requestId: string,
-    @Req() req : Request
-  ): Promise<void | JourneyServiceException> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-      'x-otp-token': XOtp,
-      'x-auth-token': xAuthToken
-    };
-
-    const params = {
-      headers: { 'x-otp-token': XOtp },
-      req: { 'cookies': { 'request_id': requestId } }
-    }
-
-    extraHeaders.authorization = req.headers['Authorization'];
-
-    await SignatureRequestDto.validateParams(params);
-
-    return this.cardPasswordDeliveryUseCaseCommand.execute(requestId, request, extraHeaders)
-      .then(result => {
-        response.setHeader('location', result.url);
-        response.end();
-      });
-
-  }
-  
-  
-  requiero que agregues Logs ESLM en eventos, asi como  que le agregues lineas de codigo en los eventos que suceden, te comparto la clase con la funcionalidad
-  
-  import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientAppDataCategory } from 'src/card-delivery/shared/common/enums/client-app-data-category';
 import { UseCaseResponse } from 'src/card-delivery/shared/domain/use-case-response';
@@ -56,11 +14,14 @@ import { LibStepsInterface } from '../../shared/interface/lib-steps.interface';
 import { IOrchestratorServiceQualifier, OrchestratorInterface } from '../../shared/interface/orchestrator.interface';
 import { Categories, ClientApplicationInformation, IPersonalDataServiceQualifier, PersonalDataInterface } from '../../shared/interface/personal-data.interface';
 import { LibStepsService } from '../../shared/service/lib-steps.service';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED } from 'src/card-delivery/shared/common/constants/log.constants';
+
 export const CardPasswordDeliveryUseCaseQualifier = Symbol('CardPasswordDeliveryUseCaseQualifier');
 
 @Injectable()
 export class CardPasswordDeliveryUsecase {
   private readonly logger = new Logger(CardPasswordDeliveryUsecase.name);
+  private readonly loggerESLM = new Logger();
   private readonly moduleName: string = 'cardPasswordDelivery';
   private readonly country: string;
   private readonly source: string;
@@ -80,20 +41,29 @@ export class CardPasswordDeliveryUsecase {
   }
 
   async execute(requestId: string, request: CardPasswordDeliveryRequest, extraHeaders: ExtraHeaders): Promise<UseCaseResponse> {
-    const personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(requestId, this.source)
+    this.loggerESLM.log(`Start CardPassword Delivery - requestId: ${requestId}`, BUSINESS_TAG);
 
+    // Obtener datos personales guardados previamente
+    const personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(requestId, this.source);
+
+    // Obtener datos básicos personales necesarios para la validación
     const basicPersonal: Categories = await this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.BASIC_PERSONAL);
+
+    // Validar firma eLlave
     await IbSecuritySignatures.validateEllave(
       this.ibSecuritySignaturesLibFactory, extraHeaders, requestId, this.moduleName, this.country, new Object(basicPersonal) as Categories);
 
-    const initResponse: BusinessProcess = await this.orchestratorService.init(requestId, this.source)
-
+    // Inicializar el proceso de negocio
+    const initResponse: BusinessProcess = await this.orchestratorService.init(requestId, this.source);
     if (initResponse.error) {
+      this.loggerESLM.error(`CardPassword Delivery init failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
       throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
     }
 
+    // Obtener configuración del módulo para ejecutar el paso correspondiente
     const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, 'cardPassword');
 
+    // Ejecutar paso definido por configuración
     await this.libStepsService.executeStep({
       stepName: moduleConfig.steps.delivery.stepName,
       personalDataResponse: personalDataResponse,
@@ -101,15 +71,16 @@ export class CardPasswordDeliveryUsecase {
       source: this.source,
       request: request,
       headers: new Map(Object.entries(extraHeaders))
-    })
+    });
 
-    const deliveryResponse: BusinessProcess = await this.orchestratorService.delivery(requestId, this.finalState, this.source)
-
+    // Ejecutar transición a estado final del proceso de negocio
+    const deliveryResponse: BusinessProcess = await this.orchestratorService.delivery(requestId, this.finalState, this.source);
     if (deliveryResponse.error) {
+      this.loggerESLM.error(`CardPassword Delivery final step failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
       throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_002);
     }
 
-    return { url: deliveryResponse.next_step }
+    this.loggerESLM.log(`CardPassword Delivery success - requestId: ${requestId}`, BUSINESS_TAG);
+    return { url: deliveryResponse.next_step };
   }
-
 }
