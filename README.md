@@ -1,117 +1,3 @@
-Gracias, requiero que me ayudes con los Logs de   @Get('/init')   @Get('/capture/layout') te comparto la clase controller y clase service  en donde esta la logica de su funcion Add commentMore actions
-/init ya tiene una implementacion de logs, me podrias apoyar con layout, adicional podrias agregar comentarios para validar que es lo que realiza cada bloque de codigo por favor
-
-
-import { Response } from 'express';
-import { InitResponseDto } from 'src/card-delivery/shared/common/api/model/initResponseDto';
-import { SCOPE_API_READ } from 'src/card-delivery/shared/common/constants/journey-constants';
-import { Headers, Controller, Get, HttpCode, Inject, UseGuards, Post, Body, Res, Req } from '@nestjs/common';
-import { AuthorizationGuard, PermissionsGuard, PreAuthorize } from '@ib/ib-security-nestjs-lib';
-import { JourneyServiceException } from 'src/card-delivery/shared/common/exceptions/custom-exception';
-import { ExtraHeaders } from 'src/card-delivery/shared/interface/extra-headers';
-import { CardPasswordDeliveryRequest } from '../../shared/common/api/model/cardPasswordDeliveryRequest';
-import { Cookies } from '../../shared/common/decorator/cookies.decorator';
-import { CardPasswordDeliveryUsecase, CardPasswordDeliveryUseCaseQualifier } from '../application/card-password-delivery.usecase';
-import { CardPasswordUseCase, CardPasswordUseCaseQualifier } from '../application/card-password.usecase';
-import { SignatureRequestDto } from '@ib/ib-mx-security-signatures-lib/dto/signatureRequestDto';
-
-@Controller('v1/card-password')
-@UseGuards(AuthorizationGuard, PermissionsGuard)
-export class CardPasswordController {
-
-  constructor(
-    @Inject(CardPasswordUseCaseQualifier) private readonly cardPasswordUseCaseCommand: CardPasswordUseCase,
-    @Inject(CardPasswordDeliveryUseCaseQualifier) private readonly cardPasswordDeliveryUseCaseCommand: CardPasswordDeliveryUsecase,
-  ) {
-  }
-
-  @HttpCode(200)
-  @PreAuthorize(SCOPE_API_READ)
-  @Get('/init')
-  async init(
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Cookies('request_id') requestId: string,
-  ): Promise<InitResponseDto | JourneyServiceException> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-    };
-
-    const response = await this.cardPasswordUseCaseCommand.execute(requestId, extraHeaders);
-
-    return response;
-  }
-
-  /**
-   * Returns the layout to capture the nip of card
-   * @param XChannelId 'MOBILE'
-   * @param XOriginatingApplCode 'IB'
-   * @param requestId 'example: 019283740192928374653'
-   * @returns
-   */
-  @HttpCode(200)
-  @PreAuthorize(SCOPE_API_READ)
-  @Get('/capture/layout')
-  async capture(
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Cookies('request_id') requestId: string,
-  ): Promise<InitResponseDto | JourneyServiceException> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-    };
-
-    const response = await this.cardPasswordUseCaseCommand.capture(requestId, extraHeaders);
-
-    return response;
-  }
-
-  @HttpCode(302)
-  @PreAuthorize(SCOPE_API_READ)
-  @Post('/delivery')
-  async delivery(
-    @Res() response: Response,
-    @Body() request: CardPasswordDeliveryRequest,
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Headers('x-otp-token') XOtp: string,
-    @Headers('x-auth-token') xAuthToken: string,
-    @Cookies('request_id') requestId: string,
-    @Req() req : Request
-  ): Promise<void | JourneyServiceException> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-      'x-otp-token': XOtp,
-      'x-auth-token': xAuthToken
-    };
-
-    const params = {
-      headers: { 'x-otp-token': XOtp },
-      req: { 'cookies': { 'request_id': requestId } }
-    }
-
-    extraHeaders.authorization = req.headers['Authorization'];
-
-    await SignatureRequestDto.validateParams(params);
-
-    return this.cardPasswordDeliveryUseCaseCommand.execute(requestId, request, extraHeaders)
-      .then(result => {
-        response.setHeader('location', result.url);
-        response.end();
-      });
-
-  }
-
-
-}
-
-
-----------------------------------------
-
-
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GetServerDrivenUiLayoutUseCase } from 'src/card-delivery/sdui/application/get-server-driven-ui-layout.usecase';
@@ -133,9 +19,9 @@ const INITIAL_STATE = 'CARD_DELIVERY.CARD_PASSWORD_HEADER_KAFKA';
 @Injectable()
 export class CardPasswordUseCase implements ICardPasswordUseCase {
   private readonly kafkaHeader: string;
-  private readonly moduleProps={name:'cardPassword'};
+  private readonly moduleProps = { name: 'cardPassword' };
   private readonly logger = new Logger(CardPasswordUseCase.name);
-  private readonly loggerESLM = new Logger(); 
+  private readonly loggerESLM = new Logger();
 
   constructor(
     @Inject(IOrchestratorServiceQualifier) private readonly orchestratorClient: OrchestratorInterface,
@@ -147,49 +33,63 @@ export class CardPasswordUseCase implements ICardPasswordUseCase {
   }
 
   async execute(requestId: string, extraHeaders: ExtraHeaders): Promise<UseCaseResponse | InitResponseDto | any> {
+    // Log de inicio del flujo INIT
     this.loggerESLM.log(`Start CardPassword INIT - requestId: ${requestId}`, BUSINESS_TAG);
+
     const initResponse: BusinessProcess = await this.orchestratorClient.init(requestId, this.kafkaHeader);
 
+    // Validación de error en respuesta
     if (initResponse.error) {
       this.loggerESLM.error(`CardPassword INIT failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
       throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
     }
-    const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, this.moduleProps.name);
-    const initalStep = moduleConfig.steps[moduleConfig.initialStep]
 
+    // Obtención de configuración de pasos del módulo
+    const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, this.moduleProps.name);
+    const initalStep = moduleConfig.steps[moduleConfig.initialStep];
+
+    // Log de éxito
     this.loggerESLM.log(`CardPassword INIT success - requestId: ${requestId}`, BUSINESS_TAG);
 
+    // Llama al servicio que obtiene el layout a presentar al usuario
     const layout: object = await this.serverDrivenUiService.execute(requestId, initalStep.layout);
+
     return this.getInitResponseDto(layout, initalStep.nextStep);
   }
 
-  getInitResponseDto(layout: object, next_step?:string):InitResponseDto{
-    const initResponseDto:InitResponseDto = new InitResponseDto();
-
+  getInitResponseDto(layout: object, next_step?: string): InitResponseDto {
+    const initResponseDto: InitResponseDto = new InitResponseDto();
     initResponseDto.data = new InitResponseDtoData();
     initResponseDto.data.layout = layout;
 
-    if(next_step!==undefined){
+    if (next_step !== undefined) {
       initResponseDto.data.nextStep = next_step;
     }
 
     return initResponseDto;
-
   }
 
   async capture(requestId: string, extraHeaders: ExtraHeaders): Promise<InitResponseDto> {
+    // Log de inicio de captura de NIP
+    this.loggerESLM.log(`Start CardPassword CAPTURE - requestId: ${requestId}`, BUSINESS_TAG);
+
     const initResponse: BusinessProcess = await this.orchestratorClient.init(requestId, this.kafkaHeader);
 
     if (initResponse.error) {
+      this.loggerESLM.error(`CardPassword CAPTURE failed - requestId: ${requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
       throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
     }
 
+    // Obtiene configuración del paso de captura del flujo
     const moduleConfig = this.moduleConfigurationService.getAppFlowConfigModule(initResponse.flow, this.moduleProps.name);
     const layout: object = await this.serverDrivenUiService.execute(requestId, moduleConfig.steps.capture.layout);
 
-    const initResponseDto:InitResponseDto = this.getInitResponseDto(layout, moduleConfig.steps.capture.nextStep);
+    // Log de éxito
+    this.loggerESLM.log(`CardPassword CAPTURE success - requestId: ${requestId}`, BUSINESS_TAG);
+
+    // Construye DTO de respuesta con layout y siguiente paso (si aplica)
+    const initResponseDto: InitResponseDto = this.getInitResponseDto(layout, moduleConfig.steps.capture.nextStep);
 
     return initResponseDto;
   }
-
 }
