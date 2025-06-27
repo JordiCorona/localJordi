@@ -1,40 +1,4 @@
-Gracias, me podrias ayudar con el end point /select , te comparto la clase controller 
-
-@HttpCode(200)
-  @PreAuthorize(SCOPE_API_WRITE)
-  @Post('/confirm')
-  async confirm(
-    @Res() response: Response,
-    @Body() request: DestinationSelectRequest,
-    @Headers('x-channel-id') XChannelId: string = 'MOBILE',
-    @Headers('x-originating-appl-code') XOriginatingApplCode: string = 'IB',
-    @Headers('x-otp-token') XOtp: string,
-    @Headers('path') path: string,
-    @Cookies('request_id') requestId: string,
-    @Req() req : Request
-  ): Promise<void> {
-    const extraHeaders: ExtraHeaders = {
-      'x-channel-id': XChannelId,
-      'x-originating-appl-code': XOriginatingApplCode,
-      'x-otp-token': XOtp
-    };
-
-    extraHeaders.authorization = req.headers['Authorization'];
-
-    const params: UseCaseParams = {
-      requestId,
-      source: this.source,
-      module: this.module,
-      subModule: path
-    }
-    const useCaseResponse: UseCaseResponse = await this.destinationConfirmUseCase.execute(params, request, extraHeaders);
-
-    this.prepareResponse(response, useCaseResponse)
-  }
-
-requiero que agregues Logs ESLM en eventos solo en la clase DestinationConfirmUseCase, asi como  que le agregues lineas de codigo en los eventos que suceden, te comparto la clase con la funcionalidad
-  
-import { BadRequestException, Inject } from '@nestjs/common';
+import { Logger, BadRequestException, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ActionBaseUseCase } from '../../shared/application/action-base.usecase';
 import { DestinationSelectRequest } from '../../shared/common/api/model/destinationSelectRequest';
@@ -55,9 +19,10 @@ import { IbSecuritySignatures } from '../../shared/service/security-signatures/i
 import { IbSecuritySignaturesFactory } from '../../shared/service/security-signatures/ib-security-signatures-factory';
 import { DestinationService } from '../service/destination.service';
 import { DestinationInterface } from '../service/interface/destination.Interface';
+import { BUSINESS_TAG, BUSINESS_TAG_FAILED } from '../../shared/common/constants/log.constants';
 
 export class DestinationConfirmUseCase extends ActionBaseUseCase {
-
+  private readonly loggerESLM = new Logger('DestinationConfirmUseCase');
   private readonly signaturesModuleName: string = 'selectDestinationDeliveryV2';
   private readonly finalStatesConfig: object;
   private readonly country: string;
@@ -69,57 +34,83 @@ export class DestinationConfirmUseCase extends ActionBaseUseCase {
     @Inject(DestinationService) private readonly destinationService: DestinationInterface,
     @Inject(IbSecuritySignaturesFactory) private readonly ibSecuritySignaturesLibFactory: IbSecuritySignaturesFactory,
     @Inject(LibStepsService) private readonly libStepsService: LibStepsInterface,
-    private readonly configService: ConfigService) {
-
+    private readonly configService: ConfigService
+  ) {
     super(orchestratorService, globalModuleConfigurationService);
-
     this.finalStatesConfig = JSON.parse(configService.get('CARD_DELIVERY.DESTINATION_CONFIRM_FINAL_STATES') ?? '{}');
     this.country = configService.get('CARD_DELIVERY.COUNTRY');
   }
 
   async execute(params: UseCaseParams, request: DestinationSelectRequest, extraHeaders: ExtraHeaders): Promise<UseCaseResponse> {
+    this.loggerESLM.log(`Start DestinationConfirmUseCase - requestId: ${params.requestId}`, BUSINESS_TAG);
 
-    await this.destinationService.validateRequest(request)
+    try {
+      // ✅ Validación del request (estructura y campos requeridos)
+      await this.destinationService.validateRequest(request);
 
-    const initResponse: BusinessProcess = await this.orchestratorService.init(params.requestId, params.source);
-    if (initResponse.error) {
-      throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
-    }
-
-    const flowConfig: FlowConfig = this.globalModuleConfigurationService.getConfiguration(params.module, initResponse.flow)
-    const currentStep: Step = this.globalModuleConfigurationService.getStep(flowConfig, params.subModule);
-
-    if (this.globalModuleConfigurationService.needValidateOtpSignatures(currentStep, { request })) {
-      await this.validateSecuritySignatures(params, extraHeaders)
-    }
-
-    await this.destinationService.saveSelectedOption(params.requestId, params.source, request.option)
-
-    if (currentStep.execution_step) {
-      const personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(params.requestId, params.source)
-
-      await this.libStepsService.executeStep({
-        stepName: currentStep.execution_step,
-        personalDataResponse: personalDataResponse,
-        flow: initResponse.flow,
-        source: params.source,
-        request: request
+      // 🔄 Inicializa el flujo del orquestador
+      const initResponse: BusinessProcess = await this.orchestratorService.init(params.requestId, params.source);
+      if (initResponse.error) {
+        this.loggerESLM.error(`Orchestrator init failed - requestId: ${params.requestId} - ${initResponse.error_message}`, BUSINESS_TAG_FAILED);
+        throw new FlowStepException(initResponse.error_message, CodeError.CRD_FLW_001);
       }
-      )
+
+      // 📋 Obtiene la configuración del módulo y el paso actual
+      const flowConfig: FlowConfig = this.globalModuleConfigurationService.getConfiguration(params.module, initResponse.flow);
+      const currentStep: Step = this.globalModuleConfigurationService.getStep(flowConfig, params.subModule);
+
+      // 🔐 Validación de OTP si se requiere para este paso
+      if (this.globalModuleConfigurationService.needValidateOtpSignatures(currentStep, { request })) {
+        this.loggerESLM.log(`Validating OTP signature - requestId: ${params.requestId}`, BUSINESS_TAG);
+        await this.validateSecuritySignatures(params, extraHeaders);
+      }
+
+      // 💾 Guarda la opción seleccionada (ej: domicilio, sucursal)
+      await this.destinationService.saveSelectedOption(params.requestId, params.source, request.option);
+
+      // 🧠 Ejecuta el paso correspondiente si está configurado (puede hacer lógica de negocio u orquestación)
+      if (currentStep.execution_step) {
+        const personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(params.requestId, params.source);
+
+        await this.libStepsService.executeStep({
+          stepName: currentStep.execution_step,
+          personalDataResponse: personalDataResponse,
+          flow: initResponse.flow,
+          source: params.source,
+          request: request
+        });
+      }
+
+      // 🔚 Define el siguiente estado final basado en la opción seleccionada
+      params.finalState = this.destinationService.getFinalState(this.finalStatesConfig, request.option);
+
+      this.loggerESLM.log(`DestinationConfirmUseCase success - requestId: ${params.requestId}`, BUSINESS_TAG);
+      return await this.getNextStepResponse(flowConfig, currentStep, params);
+    } catch (error) {
+      this.loggerESLM.error(`DestinationConfirmUseCase failed - requestId: ${params.requestId} - ${error.message}`, BUSINESS_TAG_FAILED);
+      throw error;
     }
-
-    params.finalState = this.destinationService.getFinalState(this.finalStatesConfig, request.option);
-
-    return await this.getNextStepResponse(flowConfig, currentStep, params);
   }
 
+  // 🔐 Método auxiliar para validar firmas OTP
   async validateSecuritySignatures(params: UseCaseParams, extraHeaders: ExtraHeaders) {
     if (!extraHeaders['x-otp-token']) {
-      throw new BadRequestException('x-otp-token header, is required')
+      throw new BadRequestException('x-otp-token header, is required');
     }
-    const personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(params.requestId, params.source)
-    const basicPersonal: Categories = await this.personalDataService.getCategory(personalDataResponse.categories, ClientAppDataCategory.BASIC_PERSONAL);
+
+    const personalDataResponse: ClientApplicationInformation = await this.personalDataService.getByRequestId(params.requestId, params.source);
+    const basicPersonal: Categories = await this.personalDataService.getCategory(
+      personalDataResponse.categories,
+      ClientAppDataCategory.BASIC_PERSONAL
+    );
+
     await IbSecuritySignatures.validateEllave(
-      this.ibSecuritySignaturesLibFactory, extraHeaders, params.requestId, this.signaturesModuleName, this.country, basicPersonal as Categories);
+      this.ibSecuritySignaturesLibFactory,
+      extraHeaders,
+      params.requestId,
+      this.signaturesModuleName,
+      this.country,
+      basicPersonal as Categories
+    );
   }
 }
