@@ -1,599 +1,131 @@
- {
-                            "type": "AccordionUserList",
-                            "data": {
-                                "components": [
-                                    {
-                                        "type": "Horizontal",
-                                        "data": {
-                                            "components": [
-                                                
-                                                {
-                                                    "type": "Avatar",
-                                                    "name": "Avatar",
-                                                    "data": {
-                                                        "values": {
-                                                            "text": "Roberto Barrios",
-                                                            "status": "offline"
-                                                        },
-                                                        "business": {
-                                                            "action": "showAdvisorInfo"
-                                                        },
-                                                        "format": {
-                                                            "backgroundColor": "brandPurple",
-                                                            "size": {
-                                                                "width": 48,
-                                                                "height": 48
-                                                            }
-                                                        },
-                                                        "position": {
-                                                            "alignment": "center",
-                                                            "margins": {
-                                                                "top": 24,
-                                                                "start": 16,
-                                                                "bottom": 24,
-                                                                "end": 0
-                                                            }
-                                                        }
-                                                    }
-                                                },
-                                                {
-                                                  "type": "ActionArea",
-                                                  "data": {
-                                                    "components": [
-                                                        {
-                                                            "type": "Horizontal",
-                                                            "data": {
-                                                                "components": [
-                                                                    {
-                                                                        "type": "Vertical",
-                                                                        "data": {
-                                                                            "widthFull": false,
-                                                                            "components": [
-                                                                                {
-                                                                                    "type": "Text",
-                                                                                    "data": {
-                                                                                        "widthFull": false,
-                                                                                        "text": "Body 1 Alejandra Ortiz Herrera Body 1 Alejandra Ortiz Herrera Body 1 ",
-                                                                                        "font": "subtitle3",
-                                                                                        "alignment": "start",
-                                                                                        "margins": {
-                                                                                            "bottom": 4,
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                },
-                                                                                {
-                                                                                    "type": "Text",
-                                                                                    "data": {
-                                                                                        "widthFull": false,
-                                                                                        "text": "Relationship Manager",
-                                                                                        "font": "caption",
-                                                                                        "alignment": "start",
-                                                                                        "margins": {
-                                                                                            "bottom": 0,
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            ],
-                                                                            "position": {
-                                                                                "alignment": "start",
-                                                                                "margins": {
-                                                                                    "top": 0,
-                                                                                    "start": 8,
-                                                                                    "bottom": 0,
-                                                                                    "end": 0
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    },
-                                                                    {
-                                                                        "type": "Spacer",
-                                                                        "data": {}
-                                                                    },
-                                                                    {
-                                                                        "type": "Horizontal",
-                                                                        "data": {
-                                                                            "components": [
-                                                                                {
-                                                                                    "type": "Image",
-                                                                                    "data": {
-                                                                                        "srcImage": "chevronRight",
-                                                                                        "widthFull": false,
-                                                                                        "width": 16,
-                                                                                        "height": 16,
-                                                                                        "alt": null,
-                                                                                        "align": "end",
-                                                                                        "margins": {
-                                                                                            "top": 0,
-                                                                                            "start": 8,
-                                                                                            "bottom": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            ],
-                                                                            "position": {
-                                                                                "alignment": "end",
-                                                                                "margins": {
-                                                                                    "top": 0,
-                                                                                    "start": 0,
-                                                                                    "bottom": 0,
-                                                                                    "end": 16
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    
-                                                                ],
-                                                                "position": {
-                                                                    "alignment": "center",
-                                                                    "margins": {
-                                                                        "top": 0,
-                                                                        "start": 0,
-                                                                        "bottom": 0,
-                                                                        "end": 0
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    ],
-                                                    "business": {
-                                                      "action": "AdvisorsContactInformation"
-                                                    },
-                                                    "position": {
-                                                        "alignment": "center",
-                                                        "margins": {
-                                                            "top": 0,
-                                                            "start": 0,
-                                                            "bottom": 0,
-                                                            "end": 0
-                                                        }
-                                                    }
-                                                  }
-                                                }
-                                                
-                                            ],
-                                            "position": {
-                                                "alignment": "center",
-                                                "margins": {
-                                                    "top": 0,
-                                                    "start": 0,
-                                                    "bottom": 0,
-                                                    "end": 0
-                                                }
-                                            }
-                                            
-                                        }
-                                    },
-                                    {
-                                        "type": "LineSeparator",
-                                        "data": {
-                                            "type":  "solid",
-                                            "height":  1,
-                                            "margins": {
-                                                "top": 0,
-                                                "start": 0,
-                                                "bottom": 0,
-                                                "end": 0
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "type": "Horizontal",
-                                        "data": {
-                                            "components": [
-                                                
-                                                {
-                                                    "type": "Avatar",
-                                                    "name": "Avatar",
-                                                    "data": {
-                                                        "values": {
-                                                            "srcImage": "flyingsgray.svg",
-                                                            "text": "Roberto Barrios",
-                                                            "status": "online"
-                                                        },
-                                                        "business": {
-                                                            "action": "showAdvisorInfo"
-                                                        },
-                                                        "format": {
-                                                            "backgroundColor": "brandPurple",
-                                                            "size": {
-                                                                "width": 48,
-                                                                "height": 48
-                                                            }
-                                                        },
-                                                        "position": {
-                                                            "alignment": "center",
-                                                            "margins": {
-                                                                "top": 24,
-                                                                "start": 16,
-                                                                "bottom": 24,
-                                                                "end": 0
-                                                            }
-                                                        }
-                                                    }
-                                                },
-                                                {
-                                                  "type": "ActionArea",
-                                                  "data": {
-                                                    "components": [
-                                                        {
-                                                            "type": "Horizontal",
-                                                            "data": {
-                                                                "components": [
-                                                                    {
-                                                                        "type": "Vertical",
-                                                                        "data": {
-                                                                            "widthFull": false,
-                                                                            "components": [
-                                                                                {
-                                                                                    "type": "Text",
-                                                                                    "data": {
-                                                                                        "widthFull": false,
-                                                                                        "text": "Body 2 Alejandra Ortiz Herrera",
-                                                                                        "font": "subtitle3",
-                                                                                        "alignment": "start",
-                                                                                        "margins": {
-                                                                                            "bottom": 4,
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                },
-                                                                                {
-                                                                                    "type": "Text",
-                                                                                    "data": {
-                                                                                        "widthFull": false,
-                                                                                        "text": "Relationship Manager",
-                                                                                        "font": "caption",
-                                                                                        "alignment": "start",
-                                                                                        "margins": {
-                                                                                            "bottom": 0,
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            ],
-                                                                            "position": {
-                                                                                "alignment": "start",
-                                                                                "margins": {
-                                                                                    "top": 0,
-                                                                                    "start": 8,
-                                                                                    "bottom": 0,
-                                                                                    "end": 0
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    },
-                                                                    {
-                                                                        "type": "Spacer",
-                                                                        "data": {}
-                                                                    },
-                                                                    {
-                                                                        "type": "Horizontal",
-                                                                        "data": {
-                                                                            "components": [
-                                                                                {
-                                                                                    "type": "Image",
-                                                                                    "data": {
-                                                                                        "srcImage": "signifier.svg",
-                                                                                        "backgroundColor": "brandOrange",
-                                                                                        "widthFull": false,
-                                                                                        "width": 8,
-                                                                                        "height": 8,
-                                                                                        "align": "end",
-                                                                                        "margins": {
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "bottom": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                },
-                                                                                {
-                                                                                    "type": "Image",
-                                                                                    "data": {
-                                                                                        "srcImage": "chevronRight",
-                                                                                        "widthFull": false,
-                                                                                        "width": 16,
-                                                                                        "height": 16,
-                                                                                        "alt": null,
-                                                                                        "align": "end",
-                                                                                        "margins": {
-                                                                                            "top": 0,
-                                                                                            "start": 8,
-                                                                                            "bottom": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            ],
-                                                                            "position": {
-                                                                                "alignment": "end",
-                                                                                "margins": {
-                                                                                    "top": 0,
-                                                                                    "start": 0,
-                                                                                    "bottom": 0,
-                                                                                    "end": 16
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    
-                                                                ],
-                                                                "position": {
-                                                                    "alignment": "center",
-                                                                    "margins": {
-                                                                        "top": 0,
-                                                                        "start": 0,
-                                                                        "bottom": 0,
-                                                                        "end": 0
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    ],
-                                                    "business": {
-                                                      "action": "HeaderAction"
-                                                    },
-                                                    "position": {
-                                                        "alignment": "center",
-                                                        "margins": {
-                                                            "top": 0,
-                                                            "start": 0,
-                                                            "bottom": 0,
-                                                            "end": 0
-                                                        }
-                                                    }
-                                                  }
-                                                }
-                                                
-                                            ],
-                                            "position": {
-                                                "alignment": "center",
-                                                "margins": {
-                                                    "top": 0,
-                                                    "start": 0,
-                                                    "bottom": 0,
-                                                    "end": 0
-                                                }
-                                            }
-                                            
-                                        }
-                                    },
-                                    {
-                                        "type": "LineSeparator",
-                                        "data": {
-                                            "type":  "solid",
-                                            "height":  1,
-                                            "margins": {
-                                                "top": 0,
-                                                "start": 0,
-                                                "bottom": 0,
-                                                "end": 0
-                                            }
-                                        }
-                                    }
-                                ],
-                                "headerComponents": [
-                                    {
-                                        "type": "Horizontal",
-                                        "data": {
-                                            "components": [
-                                                
-                                                {
-                                                    "type": "Avatar",
-                                                    "name": "Avatar",
-                                                    "data": {
-                                                        "values": {
-                                                            "srcImage": "flyings.svg",
-                                                            "text": "Roberto Barrios",
-                                                            "status": "online"
-                                                        },
-                                                        "business": {
-                                                            "action": "showAdvisorInfo"
-                                                        },
-                                                        "format": {
-                                                            "backgroundColor": "brandPurple",
-                                                            "size": {
-                                                                "width": 48,
-                                                                "height": 48
-                                                            }
-                                                        },
-                                                        "position": {
-                                                            "alignment": "center",
-                                                            "margins": {
-                                                                "top": 24,
-                                                                "start": 16,
-                                                                "bottom": 24,
-                                                                "end": 0
-                                                            }
-                                                        }
-                                                    }
-                                                },
-                                                {
-                                                  "type": "ActionArea",
-                                                  "data": {
-                                                    "components": [
-                                                        {
-                                                            "type": "Horizontal",
-                                                            "data": {
-                                                                "components": [
-                                                                    {
-                                                                        "type": "Vertical",
-                                                                        "data": {
-                                                                            "widthFull": false,
-                                                                            "components": [
-                                                                                {
-                                                                                    "type": "Text",
-                                                                                    "data": {
-                                                                                        "widthFull": false,
-                                                                                        "text": "Header Alejandra Ortiz Herrera",
-                                                                                        "font": "subtitle3",
-                                                                                        "alignment": "start",
-                                                                                        "margins": {
-                                                                                            "bottom": 4,
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                },
-                                                                                {
-                                                                                    "type": "Text",
-                                                                                    "data": {
-                                                                                        "widthFull": false,
-                                                                                        "text": "Relationship Manager",
-                                                                                        "font": "caption",
-                                                                                        "alignment": "start",
-                                                                                        "margins": {
-                                                                                            "bottom": 0,
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            ],
-                                                                            "position": {
-                                                                                "alignment": "start",
-                                                                                "margins": {
-                                                                                    "top": 0,
-                                                                                    "start": 8,
-                                                                                    "bottom": 0,
-                                                                                    "end": 0
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    },
-                                                                    {
-                                                                        "type": "Spacer",
-                                                                        "data": {}
-                                                                    },
-                                                                    {
-                                                                        "type": "Horizontal",
-                                                                        "data": {
-                                                                            "components": [
-                                                                                {
-                                                                                    "type": "Image",
-                                                                                    "data": {
-                                                                                        "srcImage": "signifier.svg",
-                                                                                        "backgroundColor": "brandOrange",
-                                                                                        "widthFull": false,
-                                                                                        "width": 8,
-                                                                                        "height": 8,
-                                                                                        "align": "end",
-                                                                                        "margins": {
-                                                                                            "top": 0,
-                                                                                            "start": 0,
-                                                                                            "bottom": 0,
-                                                                                            "end": 0
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            ],
-                                                                            "position": {
-                                                                                "alignment": "end",
-                                                                                "margins": {
-                                                                                    "top": 0,
-                                                                                    "start": 0,
-                                                                                    "bottom": 0,
-                                                                                    "end": 16
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    
-                                                                ],
-                                                                "position": {
-                                                                    "alignment": "center",
-                                                                    "margins": {
-                                                                        "top": 0,
-                                                                        "start": 0,
-                                                                        "bottom": 0,
-                                                                        "end": 0
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    ],
-                                                    "business": {
-                                                      "action": "AdvisorsContactInformation"
-                                                    },
-                                                    "position": {
-                                                        "alignment": "center",
-                                                        "margins": {
-                                                            "top": 0,
-                                                            "start": 0,
-                                                            "bottom": 0,
-                                                            "end": 0
-                                                        }
-                                                    }
-                                                  }
-                                                }
-                                                
-                                            ],
-                                            "position": {
-                                                "alignment": "center",
-                                                "margins": {
-                                                    "top": 0,
-                                                    "start": 0,
-                                                    "bottom": 0,
-                                                    "end": 0
-                                                }
-                                            }
-                                            
-                                        }
-                                    }
-                                ],
-                                "footerComponents": [ ],
-                                "format": {
-                                    "cardStyle": "flatSolid",
-                                    "withParentsMargins": false,
-                                    "expandableFormat": {
-                                        "textExpanded": "Ver menos asesores",
-                                        "textUnexpanded": "Ver más asesores",
-                                        "toggleActionPosition": "footer",
-                                        "expandable": false,
-                                        "resume": true,
-                                        "iconExpanded": {
-                                            "srcImage": "chevronDown",
-                                            "width": 16,
-                                            "height": 16
-                                        },
-                                        "iconUnexpanded": {
-                                            "srcImage": "chevronUp",
-                                            "width": 16,
-                                            "height": 16
-                                        }
-                                    }
-                                },
-                                "values": {
-                                    "textExpanded": "",
-                                    "textUnexpanded": ""
-                                },
-                                "position": {
-                                    "alignment": "start",
-                                    "margins": {
-                                        "bottom": 16,
-                                        "top": 32,
-                                        "start": 16,
-                                        "end": 16
-                                    }
-                                },
-                                "accessibility": {
-                                    "identifier": "accordion advisor ",
-                                    "enabled": true,
-                                    "hint": "Lista de asesores",
-                                    "label": "label ?"
-                                }
-                            }
-                        }
+{
+  "client": {
+    "id": "12345",
+    "name": "Roberto Barrios",
+    "avatarImage": "flyings.svg",       // opcional si tiene foto
+    "status": "online"                  // online | offline
+  },
+  "advisors": [
+    {
+      "id": "a1",
+      "name": "Alejandra Ortiz Herrera",
+      "role": "Relationship Manager",
+      "status": "online",                // online | offline
+      "avatarImage": "avatar1.svg",      // opcional
+      "priority": 1,                     // orden de aparición
+      "actions": {
+        "onClick": "showAdvisorInfo",    // acción para el avatar
+        "onAreaClick": "AdvisorsContactInformation"
+      }
+    },
+    {
+      "id": "a2",
+      "name": "Juan Pérez",
+      "role": "Investment Advisor",
+      "status": "offline",
+      "avatarImage": null,
+      "priority": 2,
+      "actions": {
+        "onClick": "showAdvisorInfo",
+        "onAreaClick": "HeaderAction"
+      }
+    },
+    {
+      "id": "a3",
+      "name": "María López",
+      "role": "Support Specialist",
+      "status": "online",
+      "avatarImage": null,
+      "priority": 3,
+      "actions": {
+        "onClick": "showAdvisorInfo",
+        "onAreaClick": "AdvisorsContactInformation"
+      }
+    }
+  ]
+}
+🗂️ Explicación de los campos
+client
+
+id → identificador único del cliente.
+
+name → nombre que aparece en el Avatar principal.
+
+avatarImage → si tiene un ícono o foto.
+
+status → estado de conexión.
+
+advisors[]
+
+id → identificador único del asesor.
+
+name → nombre completo (se mostrará en los textos del layout).
+
+role → cargo/rol (ej. Relationship Manager).
+
+status → si está online/offline.
+
+avatarImage → si tiene foto o ícono.
+
+priority → orden en que deben mostrarse (1–3).
+
+actions → mapeo de las acciones de negocio que el front debe ejecutar al interactuar.
+
+🎯 Beneficio de este modelo
+El backend solo entrega datos limpios y estructurados.
+
+El frontend ya sabe mapearlos al layout JSON (Avatar, Text, Role, Status, Acciones).
+
+Si mañana cambian estilos, el backend no se toca, solo el layout renderer.
+
+👉 ¿Quieres que te prepare un response ejemplo realista con 2 asesores (como el caso de tu JSON) para que lo uses como payload inicial en tu draft de back-end?
+
+
+
+
+
+
+
+Dijiste:
+cual es la funcion de         "onClick": "showAdvisorInfo",  
+
+
+ChatGPT dijo:
+¡Muy buena observación! 🔍
+
+El campo que mencionas:
+
+json
+Copiar
+Editar
+"onClick": "showAdvisorInfo"
+📌 Función de este campo
+Es un mapeo de acción de negocio que el backend devuelve como metadata.
+
+No ejecuta nada por sí mismo → su propósito es indicar al frontend qué acción debe realizar cuando el usuario haga clic en ese componente (en este caso, el Avatar del asesor).
+
+⚙️ Flujo típico
+Backend responde con "onClick": "showAdvisorInfo".
+
+Frontend tiene una tabla de acciones predefinidas (un action dispatcher).
+
+Ejemplo:
+
+javascript
+Copiar
+Editar
+if (action === "showAdvisorInfo") {
+   openAdvisorModal(advisorId); // abre modal con datos del asesor
+}
+Cuando el usuario da clic → el front lee "showAdvisorInfo" y dispara la lógica correspondiente (abrir detalle, mostrar modal, redirigir a otra vista, etc.).
+
+📖 Comparación con otros campos de acción
+"onClick": "showAdvisorInfo" → se dispara al hacer clic sobre el Avatar del asesor.
+
+"onAreaClick": "AdvisorsContactInformation" → se dispara al hacer clic en la zona de detalle/texto del asesor.
+
+👉 Esto permite que diferentes partes del mismo bloque hagan acciones distintas, aunque estén relacionadas con el mismo asesor.
+
+✅ En conclusión:
+"onClick": "showAdvisorInfo" es un identificador de acción que instruye al frontend qué hacer cuando se hace clic en el avatar del asesor, típicamente mostrar más información de ese asesor.
+
