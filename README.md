@@ -1,38 +1,132 @@
-Me puedes ayudar por favor, requiero realizar un edn point que devuelva la informacion de de una lista de asesores.
-En un futuro se debe consumir un API externa el cual consumiendolo responda la informacion a detalle.
-De momento necesito simular el como seria el response por lo cual requiero mokear los datos que responderan.
+package com.example.demo.dto;
 
-Este seria el Json de entrada.:
-{
-  "advisors": [
-    {
-      "id": "s123456",
-    },
-    {
-      "id": "s123457",
-    },
-    {
-      "id": "s123458",
+import java.util.List;
+
+public class AdvisorRequest {
+
+    private List<AdvisorId> advisors;
+
+    public List<AdvisorId> getAdvisors() {
+        return advisors;
     }
-  ]
+
+    public void setAdvisors(List<AdvisorId> advisors) {
+        this.advisors = advisors;
+    }
+
+    public static class AdvisorId {
+        private String id;
+
+        public AdvisorId() {}
+
+        public AdvisorId(String id) {
+            this.id = id;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+    }
 }
 
-Seria un Array de Ids, y deberia responder esto: 
 
-{
-  "advisors": [
-    {
-      "id": "s123456",
-      "status": "online"
-    },
-    {
-      "id": "s123457",
-      "status": "offline",
-    },
-    {
-      "id": "s123458",
-      "status": "online",
+package com.example.demo.dto;
+
+import java.util.List;
+
+public class AdvisorResponse {
+
+    private List<AdvisorStatus> advisors;
+
+    public AdvisorResponse(List<AdvisorStatus> advisors) {
+        this.advisors = advisors;
     }
-  ]
 
-Me podrias ayudar con el codigo y las clases necesarias por favor 
+    public List<AdvisorStatus> getAdvisors() {
+        return advisors;
+    }
+
+    public void setAdvisors(List<AdvisorStatus> advisors) {
+        this.advisors = advisors;
+    }
+
+    public static class AdvisorStatus {
+        private String id;
+        private String status;
+
+        public AdvisorStatus(String id, String status) {
+            this.id = id;
+            this.status = status;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+    }
+}
+
+
+package com.example.demo.service;
+
+import com.example.demo.dto.AdvisorRequest;
+import com.example.demo.dto.AdvisorResponse;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+@Service
+public class AdvisorService {
+
+    private final Random random = new Random();
+
+    public AdvisorResponse getAdvisorStatuses(AdvisorRequest request) {
+        List<AdvisorResponse.AdvisorStatus> advisorList = request.getAdvisors()
+                .stream()
+                .map(a -> new AdvisorResponse.AdvisorStatus(
+                        a.getId(),
+                        mockStatus()   // genera "online" o "offline"
+                ))
+                .collect(Collectors.toList());
+
+        return new AdvisorResponse(advisorList);
+    }
+
+    private String mockStatus() {
+        return random.nextBoolean() ? "online" : "offline";
+    }
+}
+
+package com.example.demo.controller;
+
+import com.example.demo.dto.AdvisorRequest;
+import com.example.demo.dto.AdvisorResponse;
+import com.example.demo.service.AdvisorService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/advisors")
+public class AdvisorController {
+
+    private final AdvisorService advisorService;
+
+    public AdvisorController(AdvisorService advisorService) {
+        this.advisorService = advisorService;
+    }
+
+    @PostMapping("/status")
+    public ResponseEntity<AdvisorResponse> getAdvisorStatus(@RequestBody AdvisorRequest request) {
+        AdvisorResponse response = advisorService.getAdvisorStatuses(request);
+        return ResponseEntity.ok(response);
+    }
+}
