@@ -1,153 +1,96 @@
-19:10:43  Masking supported pattern matches of $password
-[Pipeline] {
-[Pipeline] echo
-19:10:43  Applying command with credential: ib-atlasian-sa-creds-secret
-[Pipeline] sh (Curl url: https://bitbucket.agile.bns/rest/build-status/1.0/commits/0e62897b942e4ec65ac5f3f4a057950a)
-19:10:43  + curl --request POST --user 's6742985:****' --header 'Content-Type: application/json' --data '{"state":"INPROGRESS","key":"https://jenkins.dev.cl-devops-infra.chl.bns/job/IBPLATF-DELIVERY/job/PR-validation/","name":"https://jenkins.dev.cl-devops-infra.chl.bns/job/IBPLATF-DELIVERY/job/PR-validation/22107//console","url":"https://jenkins.dev.cl-devops-infra.chl.bns/job/IBPLATF-DELIVERY/job/PR-validation/22107/","description":"feature/IBPLATF-28863-despliegue-ist - 22107"}' --silent --insecure --url https://bitbucket.agile.bns/rest/build-status/1.0/commits/0e62897b942e4ec65ac5f3f4a057950a0df80e5f
-[Pipeline] echo
-19:10:43  Error:The JSON input text should neither be null nor empty.
-
-Did you forget the `def` keyword? getValueOfFile seems to be setting a field named value (to a value of type String) which could lead to memory leaks or other issues.
-
-
-package com.scotiabank.ib.advisor.monitor.service.controller;
-
 import com.scotiabank.ib.advisor.monitor.service.dto.AdvisorRequest;
 import com.scotiabank.ib.advisor.monitor.service.dto.AdvisorResponse;
 import com.scotiabank.ib.advisor.monitor.service.services.AdvisorService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.junit.jupiter.api.Test;
 
-@RestController
-@RequestMapping("/advisors")
-public class AdvisorController {
+import java.util.Collections;
 
-    private final AdvisorService advisorService;
+import static org.assertj.core.api.Assertions.assertThat;
 
-    public AdvisorController(AdvisorService advisorService) {
-        this.advisorService = advisorService;
-    }
+class AdvisorServiceTest {
 
-    @PostMapping("/status")
-    public ResponseEntity<AdvisorResponse> getAdvisorStatus(@RequestBody AdvisorRequest request) {
+    private final AdvisorService advisorService = new AdvisorService();
+
+    @Test
+    void shouldReturnStatusForSingleAdvisor() {
+        AdvisorRequest.AdvisorId advisorId = new AdvisorRequest.AdvisorId("s123456");
+        AdvisorRequest request = new AdvisorRequest();
+        request.setAdvisors(Collections.singletonList(advisorId));
+
         AdvisorResponse response = advisorService.getAdvisorStatuses(request);
-        return ResponseEntity.ok(response);
+
+        assertThat(response.getAdvisors()).hasSize(1);
+        assertThat(response.getAdvisors().get(0).getId()).isEqualTo("s123456");
+        assertThat(response.getAdvisors().get(0).getStatus())
+                .isIn("online", "offline"); // porque es aleatorio
     }
 
-}
+    @Test
+    void shouldReturnAllAdvisors() {
+        AdvisorResponse response = advisorService.getAllAdvisors();
 
-------------------------------
-package com.scotiabank.ib.advisor.monitor.service.dto;
-
-import java.util.List;
-
-public class AdvisorRequest {
-    private List<AdvisorId> advisors;
-
-    public List<AdvisorId> getAdvisors() {
-        return advisors;
+        assertThat(response.getAdvisors()).hasSize(3);
+        assertThat(response.getAdvisors())
+                .extracting("id")
+                .containsExactly("s123456", "s123457", "s123458");
     }
 
-    public void setAdvisors(List<AdvisorId> advisors) {
-        this.advisors = advisors;
-    }
 
-    public static class AdvisorId {
-        private String id;
 
-        public AdvisorId() {}
 
-        public AdvisorId(String id) {
-            this.id = id;
-        }
 
-        public String getId() {
-            return id;
-        }
 
-        public void setId(String id) {
-            this.id = id;
-        }
-    }
-}
 
-----------------------------------
-package com.scotiabank.ib.advisor.monitor.service.services;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.scotiabank.ib.advisor.monitor.service.controller.AdvisorController;
+import com.scotiabank.ib.advisor.monitor.service.dto.AdvisorRequest;
+import com.scotiabank.ib.advisor.monitor.service.dto.AdvisorResponse;
+import com.scotiabank.ib.advisor.monitor.service.services.AdvisorService;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
-import com.scotiabank.ib.advisor.monitor.service.dto.*;
-import org.springframework.stereotype.Service;
+import java.util.Collections;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Service
-public class AdvisorService {
+@WebMvcTest(AdvisorController.class)
+class AdvisorControllerTest {
 
-    private final Random random = new Random();
+    @Autowired
+    private MockMvc mockMvc;
 
-    public AdvisorResponse getAdvisorStatuses(AdvisorRequest request) {
-        List<AdvisorResponse.AdvisorStatus> advisorList = request.getAdvisors()
-                .stream()
-                .map(a -> new AdvisorResponse.AdvisorStatus(
-                        a.getId(),
-                        mockStatus()   // genera "online" o "offline"
-                ))
-                .collect(Collectors.toList());
+    @Autowired
+    private ObjectMapper objectMapper;
 
-        return new AdvisorResponse(advisorList);
-    }
+    @MockBean
+    private AdvisorService advisorService;
 
-    public AdvisorResponse getAllAdvisors(){
-        List<AdvisorResponse.AdvisorStatus> advisorList = Arrays.asList(
-                new AdvisorResponse.AdvisorStatus("s123456", mockStatus()),
-                new AdvisorResponse.AdvisorStatus("s123457", mockStatus()),
-                new AdvisorResponse.AdvisorStatus("s123458", mockStatus())
+    @Test
+    void shouldReturnAdvisorStatus() throws Exception {
+        AdvisorRequest request = new AdvisorRequest();
+        request.setAdvisors(Collections.singletonList(new AdvisorRequest.AdvisorId("s123456")));
+
+        AdvisorResponse mockResponse = new AdvisorResponse(
+                Collections.singletonList(new AdvisorResponse.AdvisorStatus("s123456", "online"))
         );
-        return new AdvisorResponse(advisorList);
-        }
 
-    private String mockStatus() {
-        return random.nextBoolean() ? "online" : "offline";
+        Mockito.when(advisorService.getAdvisorStatuses(Mockito.any(AdvisorRequest.class)))
+                .thenReturn(mockResponse);
+
+        mockMvc.perform(post("/advisors/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.advisors[0].id").value("s123456"))
+                .andExpect(jsonPath("$.advisors[0].status").value("online"));
     }
 }
-------------------------------
-package com.scotiabank.ib.advisor.monitor.service.dto;
 
-import java.util.List;
-
-public class AdvisorResponse {
-    private List<AdvisorStatus> advisors;
-
-    public AdvisorResponse(List<AdvisorStatus> advisors) {
-        this.advisors = advisors;
-    }
-
-    public List<AdvisorStatus> getAdvisors() {
-        return advisors;
-    }
-
-    public void setAdvisors(List<AdvisorStatus> advisors) {
-        this.advisors = advisors;
-    }
-
-    public static class AdvisorStatus {
-        private String id;
-        private String status;
-
-        public AdvisorStatus(String id, String status) {
-            this.id = id;
-            this.status = status;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getStatus() {
-            return status;
-        }
-    }
 }
 
