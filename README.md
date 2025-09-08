@@ -1,28 +1,13 @@
-Tengo este error
-There were issues with the specification. The option can be disabled via validateSpec (Maven/Gradle) or --skip-validate-spec (CLI).
- | Error count: 4, Warning count: 2
-Errors: 
-	-attribute components.version is unexpected
-	-Duplicate field paths in `C:\ProyectosDigital\tools\merge master\ib-advisor-monitor-service/src/main/resources/api.yml`
-	-attribute components.title is unexpected
-	-attribute components.description is unexpected
-Warnings: 
-	-attribute components.version is unexpected
-	-Duplicate field paths in `C:\ProyectosDigital\tools\merge master\ib-advisor-monitor-service/src/main/resources/api.yml`
-	-attribute components.title is unexpected
-	-attribute components.description is unexpected
-
-
-te comparto la clase me ayudas a revisar por favor 
-
 openapi: 3.0.2
 info:
-  title: Advisor Service API
-  version: "1.0"
+  title: Advisor Monitor Service
+  description: API para monitorear el estado del servicio Advisor Monitor.
+  version: 1.0.0
 servers:
   - url: http://localhost:8080
 security:
   - bearerAuth: []
+
 paths:
   /advisors/status:
     post:
@@ -74,6 +59,19 @@ paths:
                 ApiResponseError401Example:
                   $ref: '#/components/examples/ApiResponseError401Example'
 
+  /test:
+    get:
+      summary: Verifica si el servicio está corriendo
+      operationId: testServiceStatus
+      responses:
+        '200':
+          description: El servicio está corriendo correctamente
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Advisor Monitor Service Running
+
 components:
   schemas:
     AdvisorRequest:
@@ -102,6 +100,7 @@ components:
                 type: string
                 enum: ["online", "offline"]
                 example: "online"
+
   examples:
     ApiRequestAdvisors:
       value:
@@ -133,19 +132,3 @@ components:
         timestamp: "2025-01-21T14:29:00.000000"
         message: "Internal Server Error"
         details: ["Internal Server Error"]
-  title: Advisor Monitor Service
-  description: API para monitorear el estado del servicio Advisor Monitor.
-  version: 1.0.0
-paths:
-  /test:
-    get:
-      summary: Verifica si el servicio está corriendo
-      operationId: testServiceStatus
-      responses:
-        '200':
-          description: El servicio está corriendo correctamente
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: Advisor Monitor Service Running
