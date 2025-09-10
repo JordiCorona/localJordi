@@ -1,254 +1,34 @@
-openapi: '3.0.3'
-info:
-  title: IB Client Interaction Service API
-  description: API for saving and retrieving user interaction data.
-  version: 1.0.0
-servers:
-  - url: http://localhost:8080
-security:
-  - bearerAuth: []
-
-paths:
-  /v1/interactions:
-    get:
-      tags:
-        - Client Interaction
-      summary: Retrieve  user interaction.
-      parameters:
-        - name: client_id
-          in: header
-          required: true
-          description: Client identifier
-          schema:
-            type: string
-        - name: feature
-          in: header
-          schema:
-            type: string
-        - name: channel
-          in: header
-          schema:
-            type: string
-        - name: country
-          in: header
-          schema:
-            type: string
-        - name: start_date
-          in: header
-          schema:
-            type: string
-            format: date-time
-        - name: end_date
-          in: header
-          schema:
-            type: string
-            format: date-time
-      responses:
-        '200':
-          description: List of user interaction records
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/ClientInteraction'
-              examples:
-                successResponseExample:
-                  $ref: '#/components/examples/SuccessResponseExample'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                errorResponseExample:
-                  $ref: '#/components/examples/ApiResponseError400Example'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                errorResponseExample:
-                  $ref: '#/components/examples/ApiResponseError500Example'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              examples:
-                ApiResponseError401Example:
-                  $ref: '#/components/examples/ApiResponseError401Example'
-  /v1/interactions/save-interaction:
-    post:
-      tags:
-        - Client Interaction
-      summary: Save a new user interaction
-      operationId: saveInteraction
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ClientInteraction'
-            examples:
-              exampleRequest:
-                $ref: '#/components/examples/SuccessClientInteractionRequestExample'
-      responses:
-        '201':
-          description: Interaction successfully created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ClientInteraction'
-              examples:
-                exampleRequest:
-                  $ref: '#/components/examples/SuccessResponseExample'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                errorResponseExample:
-                  $ref: '#/components/examples/ApiResponseError400Example'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                errorResponseExample:
-                  $ref: '#/components/examples/ApiResponseError500Example'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              examples:
-                ApiResponseError401Example:
-                  $ref: '#/components/examples/ApiResponseError401Example'
-
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: "Please enter your JWT token for authentication."
-  schemas:
-    ClientInteraction:
-      type: object
-      required:
-        - client_id
-        - country
-        - channel
-        - interactions
-      properties:
-        client_id:
-          type: string
-          description: Identifier of the client
-        country:
-          type: string
-          description: Country code of user
-        channel:
-          type: string
-          description: Source of interaction (web, app, etc)
-        interactions:
-          type: array
-          description: List of feature interactions
-          items:
-            $ref: '#/components/schemas/Interaction'
-    Interaction:
-      type: object
-      required:
-        - feature
-        - action
-      properties:
-        feature:
-          type: string
-          description: Name of the used feature
-        action:
-          type: string
-          description: Action performed by the user
-
-
-    ErrorResponse:
-      type: object
-      properties:
-        timestamp:
-          type: string
-        message:
-          type: string
-        details:
-          type: array
-          items:
-            type: string
-
-  examples:
-    SuccessClientInteractionRequestExample:
-      summary: A valid client interaction request
-      value:
-        client_id: "client-123"
-        country: "MX"
-        channel: "APP"
-        interactions:
-          - feature: "AccountView"
-            action: "ViewBalance"
-    SuccessResponseExample:
-      summary:  Success response
-      value:
-        client_id: "client-123"
-        country: "MX"
-        channel: "MOBILE"
-        created_at: "2025-06-10T08:00:00Z"
-        updated_at: "2025-06-11T11:00:00Z"
-        Interactions:
-          -  feature: "AccountView"
-             action: "ViewBalance"
-             last_time: "2025-06-11-t10:45:00Z"
-             count: 4
-
-    ApiResponseError400Example:
-      value:
-        timestamp: "2025-01-21T14:29:00.000000"
-        message: "Bad Request"
-        details: ["Bad Request"]
-    ApiResponseError401Example:
-      value:
-        timestamp: "2025-01-21T14:29:00.000000"
-        message: "Unauthorized"
-        details: ["Unauthorized"]
-    ApiResponseError500Example:
-      value:
-        timestamp: "2025-01-21T14:29:00.000000"
-        message: "Internal Server Error"
-        details: ["Internal Server Error"]
-
-
-
-
 openapi: 3.0.2
 info:
   title: Advisor Monitor Service
-  description: API para monitorear el estado del servicio Advisor Monitor.
+  description: >
+    Este microservicio permite monitorear el estado de los asesores registrados en el sistema. 
+    Permite consultar el estado de conexión (online/offline) de uno o varios asesores mediante sus IDs, 
+    lo que facilita el monitoreo en tiempo real y la integración con otros sistemas de reporting.
   version: 1.0.0
+
 servers:
   - url: http://localhost:8080
+    description: Servidor local de desarrollo
+
 security:
-  - bearerAuth: []
+  - oauth2:
+      - advisor.read
 
 paths:
   /advisors/status:
     post:
       tags:
-        - "advisors"
-      summary: Get advisor statuses by IDs
-      description: Receives a list of advisor IDs and returns their statuses (mocked data for now).
+        - "Advisors"
+      summary: Consultar el estado de los asesores
+      description: >
+        Este endpoint recibe una lista de IDs de asesores y devuelve el estado de cada uno (online/offline). 
+        Se utiliza principalmente para monitoreo y reporting de la disponibilidad de asesores. 
+        Los datos son mockeados actualmente pero se espera integrarlos con el sistema de estado real.
       operationId: getAdvisorStatusByIds
       security:
-        - bearerAuth: []
+        - oauth2:
+            - advisor.read
       requestBody:
         required: true
         content:
@@ -260,7 +40,7 @@ paths:
                 $ref: '#/components/examples/ApiRequestAdvisors'
       responses:
         '200':
-          description: Successful response with advisor statuses
+          description: Respuesta exitosa con el estado de los asesores
           content:
             application/json:
               schema:
@@ -269,55 +49,88 @@ paths:
                 ApiResponsePostAdvisors:
                   $ref: '#/components/examples/ApiResponsePostAdvisors'
         '400':
-          description: Bad Request
+          description: Solicitud incorrecta (Bad Request)
           content:
             application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 ApiResponseError400Example:
                   $ref: '#/components/examples/ApiResponseError400Example'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              examples:
-                ApiResponseError500Example:
-                  $ref: '#/components/examples/ApiResponseError500Example'
         '401':
-          description: Unauthorized
+          description: No autorizado
           content:
             application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 ApiResponseError401Example:
                   $ref: '#/components/examples/ApiResponseError401Example'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ApiResponseError500Example:
+                  $ref: '#/components/examples/ApiResponseError500Example'
 
 components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.example.com/oauth/token
+          scopes:
+            advisor.read: "Permite leer el estado de los asesores"
+            advisor.write: "Permite modificar o actualizar datos de asesores"
+
   schemas:
+    Advisor:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "s123456"
+
     AdvisorRequest:
       type: object
       properties:
         advisors:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: string
-                example: "s123456"
+            $ref: '#/components/schemas/Advisor'
+
     AdvisorResponse:
       type: object
       properties:
         advisors:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: string
-                example: "s123456"
-              status:
-                type: string
-                enum: ["online", "offline"]
-                example: "online"
+            allOf:
+              - $ref: '#/components/schemas/Advisor'
+              - type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["online", "offline"]
+                    description: Estado de conexión del asesor
+                    example: "online"
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
 
   examples:
     ApiRequestAdvisors:
@@ -326,6 +139,7 @@ components:
           - id: "s123456"
           - id: "s123457"
           - id: "s123458"
+
     ApiResponsePostAdvisors:
       value:
         advisors:
@@ -335,18 +149,21 @@ components:
             status: "offline"
           - id: "s123458"
             status: "online"
+
     ApiResponseError400Example:
       value:
-        timestamp: "2025-01-21T14:29:00.000000"
+        timestamp: "2025-01-21T14:29:00Z"
         message: "Bad Request"
-        details: ["Bad Request"]
+        details: ["Solicitud inválida"]
+
     ApiResponseError401Example:
       value:
-        timestamp: "2025-01-21T14:29:00.000000"
+        timestamp: "2025-01-21T14:29:00Z"
         message: "Unauthorized"
-        details: ["Unauthorized"]
+        details: ["Token no válido o expirado"]
+
     ApiResponseError500Example:
       value:
-        timestamp: "2025-01-21T14:29:00.000000"
+        timestamp: "2025-01-21T14:29:00Z"
         message: "Internal Server Error"
-        details: ["Internal Server Error"]
+        details: ["Error interno en el servidor"]
