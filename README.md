@@ -1,7 +1,9 @@
-Me puedes ayudar a ajustar mis clases de mis test unitarios con las clases autogeneradas por favor
 package com.scotiabank.ib.advisor.monitor.service.services;
 
-import com.scotiabank.ib.advisor.monitor.service.dto.*;
+import com.scotiabank.ib.advisor.monitor.service.model.Advisor;
+import com.scotiabank.ib.advisor.monitor.service.model.AdvisorRequest;
+import com.scotiabank.ib.advisor.monitor.service.model.AdvisorResponse;
+import com.scotiabank.ib.advisor.monitor.service.model.AdvisorResponseAdvisorsInner;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -14,24 +16,28 @@ class AdvisorServiceTest {
 
     @Test
     void shouldReturnStatusForSingleAdvisor() {
-        AdvisorRequest.AdvisorId advisorId = new AdvisorRequest.AdvisorId("s123456");
-        AdvisorRequest request = new AdvisorRequest();
-        request.setAdvisors(Collections.singletonList(advisorId));
+        Advisor advisor = new Advisor().id("s123456");
+        AdvisorRequest request = new AdvisorRequest()
+                .advisors(Collections.singletonList(advisor));
 
         AdvisorResponse response = advisorService.getAdvisorStatuses(request);
 
         assertThat(response.getAdvisors()).hasSize(1);
         assertThat(response.getAdvisors().get(0).getId()).isEqualTo("s123456");
-        assertThat(response.getAdvisors().get(0).getStatus()).isIn("online", "offline");
+        assertThat(response.getAdvisors().get(0).getStatus())
+                .isIn(AdvisorResponseAdvisorsInner.StatusEnum.ONLINE,
+                      AdvisorResponseAdvisorsInner.StatusEnum.OFFLINE);
     }
-
 }
+
 
 package com.scotiabank.ib.advisor.monitor.service.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.scotiabank.ib.advisor.monitor.service.dto.AdvisorRequest;
-import com.scotiabank.ib.advisor.monitor.service.dto.AdvisorResponse;
+import com.scotiabank.ib.advisor.monitor.service.model.Advisor;
+import com.scotiabank.ib.advisor.monitor.service.model.AdvisorRequest;
+import com.scotiabank.ib.advisor.monitor.service.model.AdvisorResponse;
+import com.scotiabank.ib.advisor.monitor.service.model.AdvisorResponseAdvisorsInner;
 import com.scotiabank.ib.advisor.monitor.service.services.AdvisorService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -41,12 +47,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 
 import java.util.Collections;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AdvisorMonitorServiceController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -62,12 +67,15 @@ public class AdvisorMonitorServiceControllerTest {
 
     @Test
     void shouldReturnAdvisorStatusWithoutSecurity() throws Exception {
-        AdvisorRequest request = new AdvisorRequest();
-        request.setAdvisors(Collections.singletonList(new AdvisorRequest.AdvisorId("s123456")));
+        AdvisorRequest request = new AdvisorRequest()
+                .advisors(Collections.singletonList(new Advisor().id("s123456")));
 
-        AdvisorResponse mockResponse = new AdvisorResponse(
-                Collections.singletonList(new AdvisorResponse.AdvisorStatus("s123456", "online"))
-        );
+        AdvisorResponse mockResponse = new AdvisorResponse()
+                .advisors(Collections.singletonList(
+                        new AdvisorResponseAdvisorsInner()
+                                .id("s123456")
+                                .status(AdvisorResponseAdvisorsInner.StatusEnum.ONLINE)
+                ));
 
         Mockito.when(advisorService.getAdvisorStatuses(Mockito.any())).thenReturn(mockResponse);
 
@@ -76,6 +84,6 @@ public class AdvisorMonitorServiceControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.advisors[0].id").value("s123456"))
-                .andExpect(jsonPath("$.advisors[0].status").value("online"));
+                .andExpect(jsonPath("$.advisors[0].status").value("ONLINE"));
     }
 }
