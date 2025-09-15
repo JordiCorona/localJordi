@@ -1,11 +1,10 @@
-Requiero agregar otro servicio a este Api.yml 
 openapi: 3.0.2
 info:
   title: Advisor Monitor Service
   description: >
     Este microservicio permite monitorear el estado de los asesores registrados en el sistema. 
     Permite consultar el estado de conexión (ONLINE/OFFLINE) de uno o varios asesores mediante sus IDs, 
-    lo que facilita el monitoreo en tiempo real y la integración con otros sistemas de reporting.
+    así como obtener los mensajes no leídos de un cliente con sus asesores asociados.
   version: 1.0.0
 
 servers:
@@ -24,8 +23,7 @@ paths:
       summary: Consultar el estado de los asesores
       description: >
         Este endpoint recibe una lista de IDs de asesores y devuelve el estado de cada uno (ONLINE/OFFLINE). 
-        Se utiliza principalmente para monitoreo y reporting de la disponibilidad de asesores. 
-        Los datos son mockeados actualmente pero se espera integrarlos con el sistema de estado real.
+        Se utiliza principalmente para monitoreo y reporting de la disponibilidad de asesores.
       operationId: getAdvisorStatusByIds
       security:
         - oauth2:
@@ -51,6 +49,63 @@ paths:
                   $ref: '#/components/examples/ApiResponsePostAdvisors'
         '400':
           description: Solicitud incorrecta (Bad Request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ApiResponseError400Example:
+                  $ref: '#/components/examples/ApiResponseError400Example'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ApiResponseError401Example:
+                  $ref: '#/components/examples/ApiResponseError401Example'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ApiResponseError500Example:
+                  $ref: '#/components/examples/ApiResponseError500Example'
+
+  /clients/{clientId}/unread/messages:
+    get:
+      tags:
+        - "Clients"
+      summary: Consultar mensajes no leídos de un cliente
+      description: >
+        Este endpoint devuelve los asesores relacionados a un cliente y si tienen mensajes no leídos.
+      operationId: getUnreadMessagesByClientId
+      security:
+        - oauth2:
+            - advisor.read
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          description: Identificador del cliente
+          schema:
+            type: string
+            example: "Jordi"
+      responses:
+        '200':
+          description: Respuesta exitosa con los mensajes no leídos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadMessagesResponse'
+              examples:
+                ApiResponseUnreadMessages:
+                  $ref: '#/components/examples/ApiResponseUnreadMessages'
+        '400':
+          description: Solicitud incorrecta
           content:
             application/json:
               schema:
@@ -120,6 +175,25 @@ components:
                     description: Estado de conexión del asesor
                     example: "ONLINE"
 
+    UnreadMessagesResponse:
+      type: object
+      properties:
+        client_id:
+          type: string
+          example: "Jordi"
+        unread_messages:
+          type: array
+          items:
+            type: object
+            properties:
+              advisor_id:
+                type: string
+                example: "s123401"
+              messages:
+                type: boolean
+                description: Indica si existen mensajes no leídos
+                example: true
+
     ErrorResponse:
       type: object
       properties:
@@ -151,6 +225,17 @@ components:
           - id: "s123458"
             status: "ONLINE"
 
+    ApiResponseUnreadMessages:
+      value:
+        client_id: "Jordi"
+        unread_messages:
+          - advisor_id: "s123401"
+            messages: false
+          - advisor_id: "s123457"
+            messages: true
+          - advisor_id: "s123458"
+            messages: false
+
     ApiResponseError400Example:
       value:
         timestamp: "2025-01-21T14:29:00Z"
@@ -168,27 +253,3 @@ components:
         timestamp: "2025-01-21T14:29:00Z"
         message: "Internal Server Error"
         details: ["Error interno en el servidor"]
-
-
-El servicio se encarga de obtener mensajes no leidos de los advisor, este es el endpoint 
-GET: http://localhost:8080/clients/Jordi/unread/messages
-este es un ejemplo de la respuesta.
-
-{
-    "client_id": "Jordi",
-    "unread_messages": [
-        {
-            "advisor_id": "s123401",
-            "messages": false
-        },
-        {
-            "advisor_id": "s123457",
-            "messages": true
-        },
-        {
-            "advisor_id": "s123458",
-            "messages": false
-        }
-    ]
-}
-
